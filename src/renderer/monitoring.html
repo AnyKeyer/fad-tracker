@@ -5,13 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Twitter Monitoring</title>
   <style>
+    :root {
+      /* Тёмная тема - основные цвета */
+      --bg-primary: #1e1e2e;
+      --bg-secondary: #282838;
+      --text-primary: #e0e0e0;
+      --text-secondary: #a0a0a0;
+      --accent: #1d9bf0;
+      --accent-hover: #1a8cd8;
+      --danger: #f4212e;
+      --danger-hover: #e01e2a;
+      --success: #00ba7c;
+      --border: #404050;
+      --card-bg: #242432;
+    }
+    
     body {
-      font-family: Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       margin: 0;
       padding: 0;
-      background-color: #f5f8fa;
-      color: #14171a;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
       overflow: hidden;
+      line-height: 1.5;
     }
     
     .monitoring-container {
@@ -21,59 +37,67 @@
     
     .sidebar-section {
       width: 350px;
-      border-right: 1px solid #e1e8ed;
+      border-left: 1px solid var(--border);
       height: 100%;
       overflow-y: auto;
       position: relative;
       display: flex;
       flex-direction: column;
+      background-color: var(--bg-secondary);
+      padding: 0 15px;
     }
     
     .tweets-section {
       flex: 1;
-      padding: 20px;
+      padding: 0;
       overflow-y: auto;
       box-sizing: border-box;
       height: 100%;
+      background-color: var(--bg-primary);
     }
     
     .tweets-list {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 15px;
+      padding: 20px;
     }
     
     .tweet-item {
-      background-color: white;
-      border-radius: 10px;
+      background-color: var(--card-bg);
+      border-radius: 16px;
       overflow: hidden;
-      border: 1px solid #e1e8ed;
+      border: 1px solid var(--border);
       transition: all 0.2s ease;
-    }
-    
-    .tweet-item:hover {
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     }
     
+    .tweet-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+    
     .tweet-item .card-header {
-      padding: 10px 15px;
+      padding: 12px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      border-bottom: 1px solid var(--border);
     }
     
     .tweet-item .card-body {
-      padding: 15px;
+      padding: 15px 20px;
     }
     
     .tweet-text {
       margin: 0;
       white-space: pre-wrap;
       word-break: break-word;
+      line-height: 1.5;
     }
     
     .excluded-tweet {
-      opacity: 0.7;
+      opacity: 0.6;
     }
     
     .excluded-tweet .tweet-text {
@@ -81,62 +105,78 @@
     }
     
     .browser-header {
-      padding: 10px;
-      background-color: #f5f8fa;
-      border-bottom: 1px solid #e1e8ed;
+      padding: 15px 20px;
+      background-color: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
+      justify-content: space-between;
     }
     
     .browser-title {
       margin: 0;
-      font-size: 16px;
-      color: #1da1f2;
+      font-size: 18px;
+      color: var(--accent);
+      font-weight: 600;
     }
     
     h2 {
-      color: #1da1f2;
-      margin-top: 0;
-      border-bottom: 1px solid #e1e8ed;
-      padding-bottom: 10px;
+      color: var(--accent);
+      margin-top: 20px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 15px;
+      font-size: 22px;
+      font-weight: 600;
     }
     
     .stat-card {
-      background-color: white;
-      border-radius: 10px;
+      background-color: var(--card-bg);
+      border-radius: 12px;
       padding: 15px;
-      margin-bottom: 20px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      margin-bottom: 15px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      border: 1px solid var(--border);
     }
     
     .stat-title {
-      font-weight: bold;
+      font-weight: 600;
       margin-bottom: 10px;
-      color: #657786;
+      color: var(--text-secondary);
+      font-size: 14px;
     }
     
     .stat-value {
       font-size: 24px;
-      font-weight: bold;
+      font-weight: 700;
       display: flex;
       align-items: center;
+      color: var(--text-primary);
     }
     
     .trend-indicator {
       margin-left: 10px;
       font-size: 14px;
+      background-color: rgba(255, 255, 255, 0.05);
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
     }
     
     .trend-up {
-      color: #17bf63;
+      color: var(--success);
+      background-color: rgba(0, 186, 124, 0.1);
     }
     
     .trend-down {
-      color: #e0245e;
+      color: var(--danger);
+      background-color: rgba(244, 33, 46, 0.1);
     }
     
     .trend-neutral {
-      color: #657786;
+      color: var(--text-secondary);
     }
     
     .keyword-list {
@@ -144,41 +184,53 @@
     }
     
     .keyword-tag {
-      background-color: #e1e8ed;
-      padding: 5px 10px;
-      border-radius: 15px;
+      background-color: rgba(29, 155, 240, 0.1);
+      padding: 6px 12px;
+      border-radius: 20px;
       display: inline-block;
       margin: 0 5px 5px 0;
+      font-size: 14px;
+      color: var(--text-primary);
+      border: 1px solid rgba(29, 155, 240, 0.3);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
     
     .stop-button {
-      background-color: #e0245e;
+      background-color: var(--danger);
       color: white;
       border: none;
       border-radius: 30px;
-      padding: 12px 24px;
+      padding: 14px 24px;
       font-size: 16px;
       cursor: pointer;
-      transition: background-color 0.3s;
+      transition: all 0.2s ease;
       display: block;
-      width: 100%;
-      margin-top: 20px;
+      width: calc(100% - 30px);
+      margin: 20px auto;
+      font-weight: 600;
+      box-shadow: 0 4px 8px rgba(244, 33, 46, 0.3);
     }
     
     .stop-button:hover {
-      background-color: #c0143e;
+      background-color: var(--danger-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 10px rgba(244, 33, 46, 0.4);
+    }
+    
+    .stop-button:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 5px rgba(244, 33, 46, 0.2);
     }
 
     .account-info {
       font-size: 14px;
-      color: #657786;
-      margin-left: 10px;
+      color: var(--text-secondary);
     }
 
     .account-link {
-      color: #1da1f2;
+      color: var(--accent);
       text-decoration: none;
-      margin-left: 5px;
+      font-weight: 600;
     }
 
     .account-link:hover {
@@ -186,9 +238,11 @@
     }
     
     .twitter-status-indicator {
-      margin-top: 20px;
-      font-size: 16px;
-      color: #657786;
+      margin: 15px 20px;
+      font-size: 14px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
     }
     
     .status-dot {
@@ -196,27 +250,65 @@
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      margin-right: 5px;
+      margin-right: 10px;
     }
     
     .status-dot.active {
-      background-color: #17bf63;
+      background-color: var(--success);
+      box-shadow: 0 0 10px rgba(0, 186, 124, 0.5);
     }
     
     .tweet-notification {
       position: fixed;
       bottom: 20px;
       left: 20px;
-      background-color: #1da1f2;
+      background-color: var(--accent);
       color: white;
-      padding: 10px 15px;
-      border-radius: 5px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      padding: 12px 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(29, 155, 240, 0.3);
       z-index: 9999;
-      max-width: 300px;
+      max-width: 350px;
       word-wrap: break-word;
       opacity: 0;
-      transition: opacity 0.3s;
+      transition: all 0.3s ease;
+      border-left: 4px solid var(--accent-hover);
+    }
+    
+    .footer {
+      text-align: center;
+      padding: 15px 0;
+      border-top: 1px solid var(--border);
+      margin-top: auto;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    
+    .footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    
+    .footer a:hover {
+      text-decoration: underline;
+    }
+    
+    /* Scrollbar Styling */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: var(--bg-primary);
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background-color: var(--border);
+      border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background-color: #505060;
     }
   </style>
 </head>
@@ -296,6 +388,11 @@
       </div>
       
       <button id="stopAnalysisBtn" class="stop-button">Stop Analysis</button>
+      
+      <!-- Footer с информацией об авторе -->
+      <div class="footer">
+        <p>Created by <a href="#">Nameless Duck</a> &copy; 2025</p>
+      </div>
     </div>
   </div>
   

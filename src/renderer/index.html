@@ -5,24 +5,49 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Twitter Token Analysis</title>
   <style>
+    :root {
+      /* Тёмная тема - основные цвета */
+      --bg-primary: #1e1e2e;
+      --bg-secondary: #282838;
+      --text-primary: #e0e0e0;
+      --text-secondary: #a0a0a0;
+      --accent: #1d9bf0;
+      --accent-hover: #1a8cd8;
+      --danger: #f4212e;
+      --danger-hover: #e01e2a;
+      --success: #00ba7c;
+      --border: #404050;
+      --card-bg: #242432;
+    }
+    
     body {
-      font-family: Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       margin: 0;
       padding: 0;
-      background-color: #f5f8fa;
-      color: #14171a;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
     }
     
     .container {
       max-width: 800px;
       margin: 0 auto;
-      padding: 20px;
+      padding: 40px 20px;
       text-align: center;
     }
     
     h1 {
-      color: #1da1f2;
+      color: var(--accent);
       margin-bottom: 40px;
+      font-size: 32px;
+      font-weight: 700;
+    }
+    
+    h2 {
+      color: var(--text-primary);
+      margin-top: 0;
+      font-size: 24px;
+      font-weight: 600;
     }
     
     .main-buttons {
@@ -30,53 +55,71 @@
       flex-direction: column;
       gap: 20px;
       margin-top: 50px;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
     }
     
     .btn {
-      background-color: #1da1f2;
+      background-color: var(--accent);
       color: white;
       border: none;
       border-radius: 30px;
       padding: 15px 30px;
       font-size: 18px;
       cursor: pointer;
-      transition: background-color 0.3s;
+      transition: all 0.2s ease;
+      font-weight: 600;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
     
     .btn:hover {
-      background-color: #0c85d0;
+      background-color: var(--accent-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
+    }
+    
+    .btn:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
     
     .login-section {
       text-align: center;
-      background-color: white;
+      background-color: var(--card-bg);
       padding: 30px;
-      border-radius: 10px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      border-radius: 16px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
       margin-bottom: 30px;
-    }
-    
-    .login-section h2 {
-      margin-top: 0;
-      color: #1da1f2;
+      border: 1px solid var(--border);
     }
     
     .login-section p {
       margin-bottom: 25px;
+      color: var(--text-secondary);
     }
     
     .twitter-login-btn {
-      background-color: #1da1f2;
+      background-color: var(--accent);
       color: white;
       border: none;
       border-radius: 30px;
-      padding: 12px 25px;
+      padding: 14px 28px;
       font-size: 16px;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 10px;
+      font-weight: 600;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      transition: all 0.2s ease;
+    }
+    
+    .twitter-login-btn:hover {
+      background-color: var(--accent-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
     }
     
     .twitter-icon {
@@ -90,57 +133,71 @@
       align-items: center;
       justify-content: center;
       margin-bottom: 20px;
-      background-color: white;
-      padding: 10px 15px;
+      background-color: var(--card-bg);
+      padding: 12px 20px;
       border-radius: 30px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+      border: 1px solid var(--border);
     }
     
     .user-info img {
-      width: 30px;
-      height: 30px;
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
-      margin-right: 10px;
+      margin-right: 15px;
+      border: 2px solid var(--accent);
     }
     
     .user-info span {
+      color: var(--text-primary);
+    }
+    
+    .user-info a {
+      color: var(--accent);
+      text-decoration: none;
       font-weight: bold;
-      color: #1da1f2;
+    }
+    
+    .user-info a:hover {
+      text-decoration: underline;
     }
     
     .logout-btn {
-      background-color: #e1e8ed;
-      color: #14171a;
-      border: none;
+      background-color: rgba(244, 33, 46, 0.1);
+      color: var(--danger);
+      border: 1px solid var(--danger);
       border-radius: 30px;
-      padding: 10px 20px;
+      padding: 8px 16px;
       font-size: 14px;
       cursor: pointer;
       margin-left: 15px;
-      transition: background-color 0.3s;
+      transition: all 0.2s ease;
+      font-weight: 600;
     }
     
     .logout-btn:hover {
-      background-color: #cad6de;
+      background-color: rgba(244, 33, 46, 0.2);
     }
     
     .analysis-form {
       display: none;
       text-align: left;
-      background-color: white;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      background-color: var(--card-bg);
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border);
     }
     
     .form-group {
-      margin-bottom: 20px;
+      margin-bottom: 25px;
     }
     
     .form-group label {
       display: block;
-      margin-bottom: 8px;
-      font-weight: bold;
+      margin-bottom: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
     }
     
     .keyword-input-container {
@@ -151,50 +208,67 @@
     
     .keyword-input-container input {
       flex-grow: 1;
-      padding: 10px;
-      border: 1px solid #e1e8ed;
-      border-radius: 5px;
-      font-size: 14px;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 16px;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      transition: all 0.2s ease;
+    }
+    
+    .keyword-input-container input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(29, 155, 240, 0.3);
     }
     
     .keyword-input-container button {
-      background-color: #1da1f2;
+      background-color: var(--accent);
       color: white;
       border: none;
-      border-radius: 5px;
-      padding: 10px 15px;
+      border-radius: 8px;
+      padding: 12px 16px;
       cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+    
+    .keyword-input-container button:hover {
+      background-color: var(--accent-hover);
     }
     
     .tag-container {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
-      margin-top: 10px;
+      margin-top: 15px;
     }
     
     .tag {
-      background-color: #e1e8ed;
-      padding: 8px 12px;
+      background-color: rgba(29, 155, 240, 0.1);
+      padding: 8px 14px;
       border-radius: 20px;
       display: flex;
       align-items: center;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       transition: all 0.2s ease;
+      border: 1px solid rgba(29, 155, 240, 0.3);
     }
     
     .tag:hover {
-      background-color: #d8e5ed;
+      background-color: rgba(29, 155, 240, 0.15);
     }
     
     .tag span {
       margin-right: 8px;
+      color: var(--text-primary);
     }
     
     .tag button {
       background: none;
       border: none;
-      color: #657786;
+      color: var(--text-secondary);
       cursor: pointer;
       font-weight: bold;
       font-size: 16px;
@@ -204,20 +278,63 @@
       width: 20px;
       height: 20px;
       border-radius: 50%;
+      transition: all 0.2s ease;
     }
     
     .tag button:hover {
-      background-color: #cad6de;
+      background-color: rgba(255, 255, 255, 0.1);
+      color: var(--danger);
     }
     
     .form-buttons {
       display: flex;
       justify-content: space-between;
-      margin-top: 20px;
+      margin-top: 30px;
     }
     
     .form-step {
       animation: fadeIn 0.3s ease;
+    }
+    
+    .btn-secondary {
+      background-color: transparent;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+    }
+    
+    .btn-secondary:hover {
+      background-color: rgba(29, 155, 240, 0.1);
+    }
+    
+    .btn-danger {
+      background-color: var(--danger);
+    }
+    
+    .btn-danger:hover {
+      background-color: var(--danger-hover);
+    }
+    
+    .btn-success {
+      background-color: var(--success);
+    }
+    
+    .btn-success:hover {
+      background-color: #00a36d;
+    }
+    
+    .footer {
+      margin-top: 60px;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+    
+    .footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    
+    .footer a:hover {
+      text-decoration: underline;
     }
     
     @keyframes fadeIn {
@@ -250,10 +367,10 @@
     </div>
     
     <!-- Main Buttons (Initially Hidden) -->
-    <div class="main-buttons" style="display: none;">
+    <div id="mainButtons" class="main-buttons" style="display: none;">
       <button id="startAnalysisBtn" class="btn">Start Analysis</button>
-      <button id="settingsBtn" class="btn">Settings</button>
-      <button id="helpBtn" class="btn">Help</button>
+      <button id="settingsBtn" class="btn btn-secondary">Settings</button>
+      <button id="helpBtn" class="btn btn-secondary">Help</button>
     </div>
     
     <!-- Analysis Form -->
@@ -271,7 +388,7 @@
           <div id="keywordTags" class="tag-container"></div>
         </div>
         <div class="form-buttons">
-          <button id="cancelAnalysisBtn" class="btn">Cancel</button>
+          <button id="cancelAnalysisBtn" class="btn btn-secondary">Cancel</button>
           <button id="nextStep1Btn" class="btn">Next</button>
         </div>
       </div>
@@ -287,10 +404,15 @@
           <div id="excludeTags" class="tag-container"></div>
         </div>
         <div class="form-buttons">
-          <button id="backStep2Btn" class="btn">Back</button>
-          <button id="startTrackingBtn" class="btn">Start Tracking</button>
+          <button id="backStep2Btn" class="btn btn-secondary">Back</button>
+          <button id="startTrackingBtn" class="btn btn-success">Start Tracking</button>
         </div>
       </div>
+    </div>
+    
+    <!-- Footer с информацией об авторе -->
+    <div class="footer">
+      <p>Created by <a href="#">Nameless Duck</a> &copy; 2025</p>
     </div>
   </div>
 

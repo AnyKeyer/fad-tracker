@@ -44,20 +44,25 @@ async function closeBrowser() {
 // Create the main application window
 async function createMainWindow() {
   mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 900,
+    height: 650,
+    minWidth: 800,
+    minHeight: 600,
+    backgroundColor: '#1e1e2e', // Темный фон для окна
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js')
-    }
+    },
+    autoHideMenuBar: true, // Скрываем системное меню
+    icon: path.join(__dirname, '../renderer/assets/icon.png') // Добавим иконку, если она будет создана
   });
 
   // Load the main HTML file
   await mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
 
-  // Open DevTools only in development mode
-  if (process.env.NODE_ENV === 'development') {
+  // Open DevTools only in development mode and если явно задана переменная окружения OPEN_DEВ_TOOLS
+  if (process.env.NODE_ENV === 'development' && process.env.OPEN_DEV_TOOLS === 'true') {
     mainWindow.webContents.openDevTools();
   }
   
@@ -88,19 +93,24 @@ async function createMonitoringWindow() {
   monitoringWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    minWidth: 900,
+    minHeight: 700,
+    backgroundColor: '#1e1e2e', // Темный фон
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       webviewTag: true, // Enable webview tag
       preload: path.join(__dirname, 'preload.js')
-    }
+    },
+    autoHideMenuBar: true, // Скрываем системное меню
+    icon: path.join(__dirname, '../renderer/assets/icon.png') // Иконка окна
   });
 
   // Load the monitoring HTML file
   await monitoringWindow.loadFile(path.join(__dirname, '../renderer/monitoring.html'));
 
-  // Open DevTools in development mode
-  if (process.env.NODE_ENV === 'development') {
+  // Open DevTools only if explicitly requested
+  if (process.env.NODE_ENV === 'development' && process.env.OPEN_DEV_TOOLS === 'true') {
     monitoringWindow.webContents.openDevTools();
   }
   
@@ -1065,8 +1075,8 @@ async function setupTweetMonitoring(page) {
       }
     };
     
-    // Set up page refresh interval - now checking every 2 seconds instead of 1
-    refreshIntervalId = setInterval(refreshPage, 2000);
+    // Set up page refresh interval - checking every 3 seconds
+    refreshIntervalId = setInterval(refreshPage, 3000);
     
     // Cleanup on page close
     page.on('close', () => {
