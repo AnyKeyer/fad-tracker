@@ -1,0 +1,62 @@
+{
+  "name": "twitter-token-analysis",
+  "version": "1.0.0",
+  "description": "Twitter token analysis application for cryptocurrency trends",
+  "main": "src/main/index.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "cross-env NODE_ENV=development electron .",
+    "build": "electron-builder",
+    "pack": "electron-builder --dir"
+  },
+  "keywords": [
+    "twitter",
+    "analysis",
+    "cryptocurrency",
+    "tokens",
+    "electron",
+    "puppeteer"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "electron-log": "^5.4.0",
+    "electron-store": "^8.1.0",
+    "puppeteer": "^19.7.2",
+    "vue": "^2.7.14",
+    "vue-router": "^3.6.5",
+    "vuex": "^3.6.2"
+  },
+  "devDependencies": {
+    "@vue/cli-plugin-babel": "^5.0.8",
+    "@vue/cli-service": "^5.0.8",
+    "@vue/compiler-sfc": "^2.7.14",
+    "cross-env": "^7.0.3",
+    "electron": "^24.2.0",
+    "electron-builder": "^24.4.0",
+    "electron-devtools-installer": "^3.2.0",
+    "webpack": "^5.78.0",
+    "webpack-cli": "^5.0.1"
+  },
+  "build": {
+    "appId": "com.twitter-token-analysis.app",
+    "productName": "Twitter Token Analysis",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Twitter Monitoring</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f8fa;
+      color: #14171a;
+      overflow: hidden;
+    }
+    
+    .monitoring-container {
+      display: flex;
+      height: 100vh;
+    }
+    
+    .sidebar-section {
+      width: 350px;
+      border-right: 1px solid #e1e8ed;
+      height: 100%;
+      overflow-y: auto;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .tweets-section {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      box-sizing: border-box;
+      height: 100%;
+    }
+    
+    .tweets-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    .tweet-item {
+      background-color: white;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #e1e8ed;
+      transition: all 0.2s ease;
+    }
+    
+    .tweet-item:hover {
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .tweet-item .card-header {
+      padding: 10px 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .tweet-item .card-body {
+      padding: 15px;
+    }
+    
+    .tweet-text {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    
+    .excluded-tweet {
+      opacity: 0.7;
+    }
+    
+    .excluded-tweet .tweet-text {
+      text-decoration: line-through;
+    }
+    
+    .browser-header {
+      padding: 10px;
+      background-color: #f5f8fa;
+      border-bottom: 1px solid #e1e8ed;
+      display: flex;
+      align-items: center;
+    }
+    
+    .browser-title {
+      margin: 0;
+      font-size: 16px;
+      color: #1da1f2;
+    }
+    
+    h2 {
+      color: #1da1f2;
+      margin-top: 0;
+      border-bottom: 1px solid #e1e8ed;
+      padding-bottom: 10px;
+    }
+    
+    .stat-card {
+      background-color: white;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .stat-title {
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #657786;
+    }
+    
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+    }
+    
+    .trend-indicator {
+      margin-left: 10px;
+      font-size: 14px;
+    }
+    
+    .trend-up {
+      color: #17bf63;
+    }
+    
+    .trend-down {
+      color: #e0245e;
+    }
+    
+    .trend-neutral {
+      color: #657786;
+    }
+    
+    .keyword-list {
+      margin-bottom: 20px;
+    }
+    
+    .keyword-tag {
+      background-color: #e1e8ed;
+      padding: 5px 10px;
+      border-radius: 15px;
+      display: inline-block;
+      margin: 0 5px 5px 0;
+    }
+    
+    .stop-button {
+      background-color: #e0245e;
+      color: white;
+      border: none;
+      border-radius: 30px;
+      padding: 12px 24px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      display: block;
+      width: 100%;
+      margin-top: 20px;
+    }
+    
+    .stop-button:hover {
+      background-color: #c0143e;
+    }
+
+    .account-info {
+      font-size: 14px;
+      color: #657786;
+      margin-left: 10px;
+    }
+
+    .account-link {
+      color: #1da1f2;
+      text-decoration: none;
+      margin-left: 5px;
+    }
+
+    .account-link:hover {
+      text-decoration: underline;
+    }
+    
+    .twitter-status-indicator {
+      margin-top: 20px;
+      font-size: 16px;
+      color: #657786;
+    }
+    
+    .status-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 5px;
+    }
+    
+    .status-dot.active {
+      background-color: #17bf63;
+    }
+    
+    .tweet-notification {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background-color: #1da1f2;
+      color: white;
+      padding: 10px 15px;
+      border-radius: 5px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      z-index: 9999;
+      max-width: 300px;
+      word-wrap: break-word;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+  </style>
+</head>
+<body>
+  <div class="monitoring-container">
+    <!-- Tweets Section (Left) -->
+    <div class="tweets-section">
+      <div class="browser-header">
+        <h3 class="browser-title">Found Tweets</h3>
+        <span class="account-info" id="accountInfo">
+          Analyzing with account: <a href="#" target="_blank" class="account-link" id="accountLink">@username</a>
+        </span>
+      </div>
+      
+      <div class="twitter-status-indicator">
+        <span class="status-dot active"></span> Twitter monitoring is active
+      </div>
+      
+      <!-- Tweets list will be populated here -->
+      <div id="tweetsList" class="tweets-list"></div>
+    </div>
+    
+    <!-- Stats Section (Right Sidebar) -->
+    <div class="sidebar-section">
+      <h2>Monitoring Statistics</h2>
+      
+      <div class="keyword-list">
+        <div class="stat-title">Tracking Keywords:</div>
+        <div id="keywordsList"></div>
+      </div>
+      
+      <div class="keyword-list" id="excludedTermsContainer" style="display: none;">
+        <div class="stat-title">Excluded Terms:</div>
+        <div id="excludedTermsList"></div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-title">Total Posts Detected</div>
+        <div id="totalPosts" class="stat-value">0</div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-title">Posts in Last 5 Minutes</div>
+        <div id="posts5min" class="stat-value">
+          0
+          <span id="trend5min" class="trend-indicator trend-neutral">—</span>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-title">Posts in Last 15 Minutes</div>
+        <div id="posts15min" class="stat-value">
+          0
+          <span id="trend15min" class="trend-indicator trend-neutral">—</span>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-title">Posts in Last 30 Minutes</div>
+        <div id="posts30min" class="stat-value">
+          0
+          <span id="trend30min" class="trend-indicator trend-neutral">—</span>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-title">Posts in Last 60 Minutes</div>
+        <div id="posts60min" class="stat-value">
+          0
+          <span id="trend60min" class="trend-indicator trend-neutral">—</span>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-title">Filtered Posts</div>
+        <div id="filteredPosts" class="stat-value">0</div>
+      </div>
+      
+      <button id="stopAnalysisBtn" class="stop-button">Stop Analysis</button>
+    </div>
+  </div>
+  
+  <script src="./monitoring.js"></script>
+</body>
+</html>
