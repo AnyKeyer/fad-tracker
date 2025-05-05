@@ -208,14 +208,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 200);
   }
   
-  // Получаем сохраненный ключ API Gemini из localStorage
-  function getGeminiApiKey() {
-    return localStorage.getItem('geminiApiKey') || '';
+  // Получаем сохраненный ключ API Gemini из electron-store через IPC
+  async function getGeminiApiKey() {
+    try {
+      return await window.api.getGeminiApiKey() || '';
+    } catch (error) {
+      console.error('Error getting Gemini API key:', error);
+      return '';
+    }
   }
   
-  // Сохраняем ключ API Gemini
-  function saveGeminiApiKey(apiKey) {
-    localStorage.setItem('geminiApiKey', apiKey);
+  // Сохраняем ключ API Gemini в electron-store через IPC
+  async function saveGeminiApiKey(apiKey) {
+    try {
+      await window.api.saveGeminiApiKey(apiKey);
+    } catch (error) {
+      console.error('Error saving Gemini API key:', error);
+    }
   }
   
   // Settings button handler
@@ -265,7 +274,6 @@ document.addEventListener('DOMContentLoaded', () => {
     apiKeyInput.type = 'text';
     apiKeyInput.id = 'gemini-api-key';
     apiKeyInput.placeholder = 'Enter your Gemini API key';
-    apiKeyInput.value = getGeminiApiKey();
     apiKeyInput.style.width = '100%';
     apiKeyInput.style.padding = '12px 16px';
     apiKeyInput.style.border = '1px solid var(--border)';
@@ -276,15 +284,20 @@ document.addEventListener('DOMContentLoaded', () => {
     apiKeyInput.style.marginBottom = '15px';
     aiSettingsSection.appendChild(apiKeyInput);
     
+    // Load the saved API key
+    getGeminiApiKey().then(apiKey => {
+      apiKeyInput.value = apiKey;
+    });
+    
     // Кнопка сохранения ключа API
     const saveApiKeyBtn = document.createElement('button');
     saveApiKeyBtn.className = 'btn btn-success';
     saveApiKeyBtn.textContent = 'Save API Key';
     saveApiKeyBtn.style.padding = '10px 20px';
     saveApiKeyBtn.style.fontSize = '16px';
-    saveApiKeyBtn.addEventListener('click', () => {
+    saveApiKeyBtn.addEventListener('click', async () => {
       const apiKey = apiKeyInput.value.trim();
-      saveGeminiApiKey(apiKey);
+      await saveGeminiApiKey(apiKey);
       
       // Показываем уведомление о сохранении
       const notification = document.createElement('div');

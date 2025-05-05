@@ -10,7 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const posts15min = document.getElementById('posts15min');
   const posts30min = document.getElementById('posts30min');
   const posts60min = document.getElementById('posts60min');
-  const filteredPosts = document.getElementById('filteredPosts');
   const trend1min = document.getElementById('trend1min');
   const trend5min = document.getElementById('trend5min');
   const trend15min = document.getElementById('trend15min');
@@ -25,6 +24,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const accountInfo = document.getElementById('accountInfo');
   const accountLink = document.getElementById('accountLink');
   const tweetsList = document.getElementById('tweetsList');
+  
+  // Gemini AI Elements
+  const refreshAnalysisBtn = document.getElementById('refreshAnalysisBtn');
+  const toggleAiBtn = document.getElementById('toggleAiBtn');
+  const showAnalysisTopBtn = document.getElementById('showAnalysisTopBtn'); // New button at the top
+  const lastAnalysisTime = document.getElementById('lastAnalysisTime');
+  const overallSentiment = document.getElementById('overallSentiment');
+  const positiveSentimentBar = document.getElementById('positiveSentimentBar');
+  const neutralSentimentBar = document.getElementById('neutralSentimentBar');
+  const negativeSentimentBar = document.getElementById('negativeSentimentBar');
+  const positiveSentimentValue = document.getElementById('positiveSentimentValue');
+  const neutralSentimentValue = document.getElementById('neutralSentimentValue');
+  const negativeSentimentValue = document.getElementById('negativeSentimentValue');
+  const aiInsights = document.getElementById('aiInsights');
+  const keyPhrasesContainer = document.getElementById('keyPhrasesContainer');
   
   // Кэш для информации о профилях пользователей
   const profileCache = new Map();
@@ -245,7 +259,6 @@ document.addEventListener('DOMContentLoaded', () => {
       
       if (excluded) {
         stats.filteredPosts++;
-        filteredPosts.textContent = stats.filteredPosts;
         console.log(`MONITORING UI: Твит отфильтрован: ${postData.id}`);
       } else {
         // Увеличиваем общий счетчик
@@ -347,14 +360,6 @@ document.addEventListener('DOMContentLoaded', () => {
       tweetElement.classList.add('excluded-tweet');
     }
     
-    // Извлекаем имя пользователя без @ для дальнейшего использования
-    let username = author;
-    if (author.includes('@')) {
-      username = author.split('@')[1];
-    } else if (author.includes(' @')) {
-      username = author.split(' @')[1];
-    }
-    
     // HTML для заголовка твита
     const headerHtml = `
       <div class="card-header ${excluded ? 'bg-secondary' : 'bg-info'}" style="background-color: ${excluded ? '#6c757d' : '#17a2b8'}; color: white;">
@@ -363,13 +368,10 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
     `;
     
-    // HTML для тела твита (временно)
+    // HTML для тела твита (без информации о подписчиках/подписках)
     const bodyHtml = `
       <div class="card-body">
         <p class="tweet-text">${postData.text}</p>
-        <div class="profile-info" id="profile-${postData.id}">
-          <span class="loading-info">Загрузка информации о профиле...</span>
-        </div>
       </div>
     `;
     
@@ -387,61 +389,6 @@ document.addEventListener('DOMContentLoaded', () => {
       tweetsList.insertBefore(tweetElement, tweetsList.firstChild);
     } else {
       tweetsList.appendChild(tweetElement);
-    }
-    
-    // Загружаем информацию о профиле и обновляем твит
-    if (username) {
-      try {
-        const profileInfo = await fetchProfileInfo(username);
-        if (profileInfo) {
-          const profileElement = document.getElementById(`profile-${postData.id}`);
-          if (profileElement) {
-            profileElement.innerHTML = `
-              <div class="profile-stats">
-                <span class="profile-stat followers">👥 Подписчики: ${formatNumber(profileInfo.followers)}</span>
-                <span class="profile-stat following">🔄 Подписки: ${formatNumber(profileInfo.following)}</span>
-                ${profileInfo.verified ? '<span class="profile-verified">✓ Верифицирован</span>' : ''}
-              </div>
-            `;
-            
-            // Добавляем стили для информации о профиле
-            const profileStats = profileElement.querySelector('.profile-stats');
-            if (profileStats) {
-              profileStats.style.display = 'flex';
-              profileStats.style.flexWrap = 'wrap';
-              profileStats.style.gap = '10px';
-              profileStats.style.marginTop = '10px';
-              profileStats.style.fontSize = '13px';
-              profileStats.style.color = '#8899a6';
-            }
-            
-            // Добавляем стили для подписчиков и подписок
-            const statElements = profileElement.querySelectorAll('.profile-stat');
-            statElements.forEach(el => {
-              el.style.backgroundColor = 'rgba(29, 161, 242, 0.1)';
-              el.style.padding = '4px 8px';
-              el.style.borderRadius = '12px';
-              el.style.color = '#1da1f2';
-            });
-            
-            // Стиль для верифицированной метки
-            const verifiedElement = profileElement.querySelector('.profile-verified');
-            if (verifiedElement) {
-              verifiedElement.style.backgroundColor = 'rgba(0, 186, 124, 0.1)';
-              verifiedElement.style.padding = '4px 8px';
-              verifiedElement.style.borderRadius = '12px';
-              verifiedElement.style.color = '#00ba7c';
-            }
-          }
-        }
-      } catch (error) {
-        console.error(`Error fetching profile info for ${username}:`, error);
-        // Если не удалось загрузить информацию о профиле, просто скрываем элемент загрузки
-        const profileElement = document.getElementById(`profile-${postData.id}`);
-        if (profileElement) {
-          profileElement.style.display = 'none';
-        }
-      }
     }
     
     // Ограничиваем количество отображаемых твитов для производительности
@@ -719,5 +666,194 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (error) {
       alert(`Ошибка: ${error.message}`);
     }
+  });
+
+  let tweetsPullingInterval;
+  let geminiApiKey = '';
+  let aiEnabled = true;
+  
+  // Загружаем сохраненный API-ключ Gemini при запуске
+  async function loadGeminiApiKey() {
+    geminiApiKey = await window.electronAPI.getGeminiApiKey();
+    // Если ключ не настроен, показываем сообщение
+    if (!geminiApiKey) {
+      aiInsights.innerHTML = `
+        <div class="ai-insight-placeholder">
+          <p>Gemini API key not configured. Go to settings to add your API key.</p>
+        </div>
+      `;
+      refreshAnalysisBtn.disabled = true;
+    }
+  }
+  
+  // Функция для анализа твитов с помощью Gemini API
+  async function analyzeTwitterSentiment(tweets) {
+    if (!geminiApiKey || tweets.length === 0) return;
+    
+    // Показываем индикатор загрузки и начальный статус
+    aiInsights.innerHTML = '<div class="ai-insight-placeholder">Preparing to analyze tweets with Gemini AI...</div>';
+    lastAnalysisTime.textContent = `Status: Preparing data...`;
+    
+    try {
+      // Get the keywords for context
+      let keywords = [];
+      try {
+        keywords = window.electronAPI.getKeywords() || [];
+      } catch (keywordError) {
+        console.error('Error getting keywords:', keywordError);
+        keywords = [];
+      }
+      
+      // Prepare the coin name from keywords if possible
+      const coinName = keywords.length > 0 ? keywords[0] : 'cryptocurrency';
+      
+      // Обновляем статус - отправка запроса
+      aiInsights.innerHTML = '<div class="ai-insight-placeholder">Sending request to Gemini AI...<br><small>This may take a few moments depending on the number of tweets</small></div>';
+      lastAnalysisTime.textContent = `Status: Sending request to Gemini...`;
+      
+      // Отправляем запрос через main процесс с правильной структурой данных
+      const response = await window.electronAPI.analyzeWithGemini({
+        apiKey: geminiApiKey,
+        tweets: tweets,
+        coinName: coinName
+      });
+      
+      // Обновляем статус - обработка ответа
+      aiInsights.innerHTML = '<div class="ai-insight-placeholder">Processing Gemini AI response...</div>';
+      lastAnalysisTime.textContent = `Status: Processing response...`;
+      
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to get analysis from Gemini');
+      }
+      
+      // Process the successful response
+      updateAiAnalysisUI(response.data);
+      
+      // Обновляем статус - анализ завершен
+      lastAnalysisTime.textContent = `Analysis completed: ${new Date().toLocaleTimeString()}`;
+    } catch (error) {
+      console.error('Gemini API error:', error);
+      aiInsights.innerHTML = `
+        <div class="ai-insight-placeholder">
+          <p>Error connecting to Gemini API.</p>
+          <p><small>Error details: ${error.message}</small></p>
+          <p>Please check your API key and try again.</p>
+        </div>
+      `;
+      lastAnalysisTime.textContent = `Status: Error - ${error.message}`;
+    }
+  }
+  
+  // Функция для обновления интерфейса с результатами анализа
+  function updateAiAnalysisUI(result) {
+    try {
+      console.log('Received analysis result:', result);
+      
+      // Обновляем общий индикатор настроения
+      overallSentiment.textContent = result.sentiment;
+      overallSentiment.className = 'sentiment-indicator ' + result.sentiment.toLowerCase();
+      
+      // Обновляем прогресс-бары настроения
+      positiveSentimentBar.style.width = `${result.sentimentBreakdown.positive}%`;
+      neutralSentimentBar.style.width = `${result.sentimentBreakdown.neutral}%`;
+      negativeSentimentBar.style.width = `${result.sentimentBreakdown.negative}%`;
+      
+      positiveSentimentValue.textContent = `${result.sentimentBreakdown.positive}%`;
+      neutralSentimentValue.textContent = `${result.sentimentBreakdown.neutral}%`;
+      negativeSentimentValue.textContent = `${result.sentimentBreakdown.negative}%`;
+      
+      // Обновляем текст анализа
+      aiInsights.innerHTML = `<p>${result.analysis || result.insights || 'No analysis provided'}</p>`;
+      
+      // Обновляем ключевые темы
+      keyPhrasesContainer.innerHTML = '';
+      
+      // Check for different possible property names for key topics/phrases and use the first valid one
+      const topics = result.keyTopics || result.keyPhrases || result.topics || [];
+      
+      if (Array.isArray(topics) && topics.length > 0) {
+        topics.forEach(topic => {
+          const phraseElement = document.createElement('div');
+          phraseElement.className = 'key-phrase';
+          phraseElement.textContent = topic;
+          keyPhrasesContainer.appendChild(phraseElement);
+        });
+      } else {
+        // If no topics/phrases are provided, display a message
+        const noTopicsElement = document.createElement('div');
+        noTopicsElement.className = 'key-phrase';
+        noTopicsElement.textContent = 'No key topics identified';
+        keyPhrasesContainer.appendChild(noTopicsElement);
+      }
+    } catch (error) {
+      console.error('Error updating UI with analysis result:', error);
+      aiInsights.innerHTML = `<p>Error displaying analysis results: ${error.message}</p>`;
+      
+      // Log the structure of the result for debugging
+      console.log('Result structure:', JSON.stringify(result, null, 2));
+    }
+  }
+  
+  // Обработчик кнопки анализа твитов
+  refreshAnalysisBtn.addEventListener('click', () => {
+    // Получаем последние твиты для анализа (до 50 штук)
+    const tweetsToAnalyze = Array.from(document.querySelectorAll('.tweet-item'))
+      .slice(0, 50)
+      .map(tweetElem => {
+        const tweetText = tweetElem.querySelector('.tweet-text');
+        const headerElement = tweetElem.querySelector('.card-header');
+        
+        return {
+          text: tweetText ? tweetText.textContent : '',
+          author: headerElement ? headerElement.querySelector('span')?.textContent || '' : ''
+        };
+      })
+      .filter(tweet => tweet.text); // Filter out any tweets without text
+    
+    // Show loading status
+    aiInsights.innerHTML = '<div class="ai-insight-placeholder">Processing tweets...</div>';
+    
+    // Update last analysis time
+    const now = new Date();
+    lastAnalysisTime.textContent = `Last analyzed: ${now.toLocaleTimeString()}`;
+    
+    // Call the sentiment analysis function
+    analyzeTwitterSentiment(tweetsToAnalyze);
+  });
+  
+  // Modified toggle AI button handler
+  toggleAiBtn.addEventListener('click', () => {
+    toggleAiPanel(false);
+  });
+  
+  // Handler for the new show analysis button at the top
+  showAnalysisTopBtn.addEventListener('click', () => {
+    toggleAiPanel(true);
+  });
+  
+  // Unified function to toggle AI panel visibility
+  function toggleAiPanel(show) {
+    const aiSection = document.querySelector('.ai-analysis-section');
+    const tweetsSection = document.querySelector('.tweets-section');
+    
+    if (show) {
+      // Show the panel
+      aiSection.style.display = 'flex';
+      toggleAiBtn.textContent = 'Hide Analysis';
+      tweetsSection.style.gridTemplateColumns = '1fr 480px';
+      showAnalysisTopBtn.style.display = 'none'; // Hide the top button
+      aiEnabled = true;
+    } else {
+      // Hide the panel
+      aiSection.style.display = 'none';
+      tweetsSection.style.gridTemplateColumns = '1fr';
+      showAnalysisTopBtn.style.display = 'inline-block'; // Show the top button
+      aiEnabled = false;
+    }
+  }
+  
+  // Инициализация
+  window.addEventListener('DOMContentLoaded', () => {
+    loadGeminiApiKey();
   });
 });

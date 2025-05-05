@@ -20,6 +20,11 @@ contextBridge.exposeInMainWorld(
     getTwitterUserInfo: () => ipcRenderer.invoke('get-twitter-user-info'),
     getTwitterCookies: () => ipcRenderer.invoke('get-twitter-cookies'),
     getTwitterProfileInfo: (username) => ipcRenderer.invoke('get-twitter-profile-info', username),
+    // Добавляем метод для работы с Gemini API
+    analyzeWithGemini: (data) => ipcRenderer.invoke('analyze-tweets-with-gemini', data),
+    // Add Gemini API key storage methods
+    getGeminiApiKey: () => ipcRenderer.invoke('get-gemini-api-key'),
+    saveGeminiApiKey: (apiKey) => ipcRenderer.invoke('save-gemini-api-key', apiKey),
     onPostData: (callback) => ipcRenderer.on('post-data', (_, data) => callback(data)),
     onBrowserTarget: (callback) => ipcRenderer.on('browser-target', (_, targetId) => callback(targetId)),
     onSearchInfo: (callback) => ipcRenderer.on('search-info', (_, info) => callback(info)),
@@ -33,6 +38,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   sendTweet: (tweetData) => {
     console.log('Direct electronAPI.sendTweet called with:', tweetData);
     ipcRenderer.send('post-detected', tweetData);
+  },
+  // Add Gemini API functionality to electronAPI
+  analyzeWithGemini: (data) => ipcRenderer.invoke('analyze-tweets-with-gemini', data),
+  getGeminiApiKey: () => ipcRenderer.invoke('get-gemini-api-key'),
+  // Add method to get keywords for the Gemini AI analysis
+  getKeywords: () => {
+    // Get keywords from electron-store via main process
+    return ipcRenderer.invoke('get-keywords') || [];
   }
 });
 

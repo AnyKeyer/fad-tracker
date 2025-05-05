@@ -20,6 +20,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@google/generative-ai": "^0.2.0",
+    "axios": "^1.6.7",
+    "dotenv": "^16.4.1",
     "electron-log": "^5.4.0",
     "electron-store": "^8.1.0",
     "puppeteer": "^19.7.2",

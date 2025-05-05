@@ -102,17 +102,17 @@ class TwitterPostObserver {
       const latestTab = document.querySelector(latestTabSelector);
       
       if (latestTab) {
-        console.log("📊 Found 'Latest' tab, clicking with STRICT 17-second delay");
+        console.log("📊 Found 'Latest' tab, clicking with STRICT 20-second delay");
         latestTab.click();
         
-        // ВАЖНО: Отложить обработку после клика на СТРОГО 17 секунд
+        // ВАЖНО: Отложить обработку после клика на СТРОГО 20 секунд
         setTimeout(() => {
-          console.log("📊 Tab clicked, initializing after strict 17-second delay");
+          console.log("📊 Tab clicked, initializing after strict 20-second delay");
           this.initialized = true;
           
           // Выполняем проверку сразу после инициализации
           this.scheduleDelayedChecks();
-        }, 17000); // СТРОГАЯ задержка 17 секунд для инициализации
+        }, 20000); // СТРОГАЯ задержка 20 секунд для инициализации
       } else {
         console.log("📊 Can't find 'Latest' tab, trying alternative methods");
         // Try to find top tab elements for inspection
@@ -122,14 +122,14 @@ class TwitterPostObserver {
           console.log("📊 Clicking on second tab, which is likely 'Latest'");
           tabs[1].click();
           
-          // ВАЖНО: Отложить обработку после клика на СТРОГО 17 секунд
+          // ВАЖНО: Отложить обработку после клика на СТРОГО 20 секунд
           setTimeout(() => {
-            console.log("📊 Tab clicked, initializing after strict 17-second delay");
+            console.log("📊 Tab clicked, initializing after strict 20-second delay");
             this.initialized = true;
             
             // Выполняем проверку сразу после инициализации
             this.scheduleDelayedChecks();
-          }, 17000); // СТРОГАЯ задержка 17 секунд для инициализации
+          }, 20000); // СТРОГАЯ задержка 20 секунд для инициализации
         }
       }
     } catch (error) {
@@ -137,77 +137,77 @@ class TwitterPostObserver {
     }
   }
   
-  // Новый, более безопасный метод для запуска проверок со СТРОГИМ интервалом в 17 секунд
+  // Новый, более безопасный метод для запуска проверок со СТРОГИМ интервалом в 20 секунд
   scheduleDelayedChecks() {
     // Очищаем множество известных ID перед проверками
     this.knownPostIds.clear();
     
-    console.log("📊 Starting tweet checks with STRICT 17-second intervals");
+    console.log("📊 Starting tweet checks with STRICT 20-second intervals");
     
-    // Единственная проверка после СТРОГОГО интервала в 17 секунд
+    // Единственная проверка после СТРОГОГО интервала в 20 секунд
     setTimeout(() => {
-      console.log("📊 Running tweet check after STRICT 17-second delay");
+      console.log("📊 Running tweet check after STRICT 20-second delay");
       this.checkForNewPosts();
       
-      // После проверки твитов ждем еще 17 секунд и выполняем прокрутку ленты
+      // После проверки твитов ждем еще 20 секунд и выполняем прокрутку ленты
       setTimeout(() => {
-        console.log("📊 Performing timeline scroll after STRICT 17-second delay");
+        console.log("📊 Performing timeline scroll after STRICT 20-second delay");
         this.scrollTimeline();
         
-        // После прокрутки ждем еще 17 секунд и выполняем финальную проверку
+        // После прокрутки ждем еще 20 секунд и выполняем финальную проверку
         setTimeout(() => {
-          console.log("📊 Running final tweet check after STRICT 17-second delay");
+          console.log("📊 Running final tweet check after STRICT 20-second delay");
           this.knownPostIds.clear();
           this.checkForNewPosts();
           
           // Завершающее сообщение
-          console.log("📊 Initial tweet scanning complete with STRICT 17-second intervals");
-        }, 17000); // СТРОГАЯ задержка 17 секунд перед финальной проверкой
-      }, 17000); // СТРОГАЯ задержка 17 секунд перед прокруткой
-    }, 17000); // СТРОГАЯ задержка 17 секунд перед первой проверкой
+          console.log("📊 Initial tweet scanning complete with STRICT 20-second intervals");
+        }, 20000); // СТРОГАЯ задержка 20 секунд перед финальной проверкой
+      }, 20000); // СТРОГАЯ задержка 20 секунд перед прокруткой
+    }, 20000); // СТРОГАЯ задержка 20 секунд перед первой проверкой
   }
   
-  // Новый метод - запланировать несколько последовательных проверок твитов со СТРОГИМ интервалом в 17 секунд
+  // Новый метод - запланировать несколько последовательных проверок твитов со СТРОГИМ интервалом в 20 секунд
   scheduleMultipleChecks() {
     // Очищаем множество известных ID перед проверками
     this.knownPostIds.clear();
     
-    console.log("📊 Starting tweet checks with STRICT 17-second intervals");
+    console.log("📊 Starting tweet checks with STRICT 20-second intervals");
     
-    // Первая проверка через СТРОГО 17 секунд
+    // Первая проверка через СТРОГО 20 секунд
     setTimeout(() => {
-      console.log("📊 Running initial tweet check after STRICT 17-second delay");
+      console.log("📊 Running initial tweet check after STRICT 20-second delay");
       this.checkForNewPosts();
       
-      // Прокрутка ленты через СТРОГО 17 секунд после первой проверки
+      // Прокрутка ленты через СТРОГО 20 секунд после первой проверки
       setTimeout(() => {
-        console.log("📊 Performing timeline scroll after STRICT 17-second delay");
+        console.log("📊 Performing timeline scroll after STRICT 20-second delay");
         this.scrollTimeline();
         
-        // Вторая проверка через СТРОГО 17 секунд после прокрутки
+        // Вторая проверка через СТРОГО 20 секунд после прокрутки
         setTimeout(() => {
-          console.log("📊 Running second tweet check after STRICT 17-second delay");
+          console.log("📊 Running second tweet check after STRICT 20-second delay");
           this.knownPostIds.clear();
           this.checkForNewPosts();
           
-          // Вторая прокрутка через СТРОГО 17 секунд
+          // Вторая прокрутка через СТРОГО 20 секунд
           setTimeout(() => {
-            console.log("📊 Performing second timeline scroll after STRICT 17-second delay");
+            console.log("📊 Performing second timeline scroll after STRICT 20-second delay");
             this.scrollTimeline();
             
-            // Финальная проверка через СТРОГО 17 секунд
+            // Финальная проверка через СТРОГО 20 секунд
             setTimeout(() => {
-              console.log("📊 Running final tweet check after STRICT 17-second delay");
+              console.log("📊 Running final tweet check after STRICT 20-second delay");
               this.knownPostIds.clear();
               this.checkForNewPosts();
               
               // Завершающее сообщение
-              console.log("📊 Initial tweet scanning complete with STRICT 17-second intervals");
-            }, 17000); // СТРОГАЯ задержка 17 секунд перед финальной проверкой
-          }, 17000); // СТРОГАЯ задержка 17 секунд перед второй прокруткой
-        }, 17000); // СТРОГАЯ задержка 17 секунд перед второй проверкой
-      }, 17000); // СТРОГАЯ задержка 17 секунд перед первой прокруткой
-    }, 17000); // СТРОГАЯ задержка 17 секунд перед первой проверкой
+              console.log("📊 Initial tweet scanning complete with STRICT 20-second intervals");
+            }, 20000); // СТРОГАЯ задержка 20 секунд перед финальной проверкой
+          }, 20000); // СТРОГАЯ задержка 20 секунд перед второй прокруткой
+        }, 20000); // СТРОГАЯ задержка 20 секунд перед второй проверкой
+      }, 20000); // СТРОГАЯ задержка 20 секунд перед первой прокруткой
+    }, 20000); // СТРОГАЯ задержка 20 секунд перед первой проверкой
   }
   
   // Новый метод для автоматической прокрутки ленты твитов

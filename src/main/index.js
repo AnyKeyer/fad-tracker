@@ -2,7 +2,10 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 const puppeteer = require('puppeteer');
-const log = require('./logger'); // Import our logger
+const logger = require('./logger'); // Import our updated logger
+const log = logger.main; // Use main logger for general app logs
+const aiLog = logger.ai; // Use AI logger for Gemini API related logs
+const axios = require('axios'); // Import axios for Gemini API
 
 // Initialize store for saving settings
 const store = new Store();
@@ -419,7 +422,7 @@ ipcMain.handle('stop-analysis', async () => {
   }
 });
 
-// Set up page refresh interval - checking every 17 seconds
+// Set up page refresh interval - checking every 20 seconds
 let refreshIntervalId = null;
 
 // Function to refresh page that doesn't depend on window object
@@ -466,8 +469,8 @@ async function refreshPage() {
         // Initialize if it doesn't exist
         window.lastPageRefreshTime = window.lastPageRefreshTime || 0;
         
-        // Check if enough time has passed (17 seconds)
-        if (timestamp - window.lastPageRefreshTime >= 17000) {
+        // Check if enough time has passed (20 seconds)
+        if (timestamp - window.lastPageRefreshTime >= 20000) {
           // Update the timestamp
           window.lastPageRefreshTime = timestamp;
           return true;
@@ -476,7 +479,7 @@ async function refreshPage() {
       }, now);
       
       if (needsRefresh) {
-        log.info("🔄 Performing full page reload (17-second interval)");
+        log.info("🔄 Performing full page reload (20-second interval)");
         
         // Save current URL
         const currentUrl = await page.url();
@@ -850,7 +853,7 @@ async function setupTweetMonitoring(page) {
           
           // Timeline refresh function (for browser context)
           window.refreshTwitterTimeline = function() {
-            console.log("🔄 Page refresh initiated (17 second interval)");
+            console.log("🔄 Page refresh initiated (20 second interval)");
             
             try {
               // Method 1: Try to find and click refresh button first
@@ -983,8 +986,8 @@ async function setupTweetMonitoring(page) {
             
             ensureLatestTab();
             
-            // Set up periodic refreshes - every 17 seconds to avoid timeouts
-            setInterval(window.refreshTwitterTimeline, 17000); // Refresh every 17 seconds
+            // Set up periodic refreshes - every 20 seconds to avoid timeouts
+            setInterval(window.refreshTwitterTimeline, 20000); // Refresh every 20 seconds
             setInterval(window.smartScrollTimeline, 60000);   // Smart scroll every 60 seconds
             setInterval(window.detectNewTweets, 5000);        // Regular scans every 5 seconds
             
@@ -1054,9 +1057,9 @@ async function setupTweetMonitoring(page) {
     if (refreshIntervalId) {
       clearInterval(refreshIntervalId);
     }
-    refreshIntervalId = setInterval(refreshPage, 17000);
+    refreshIntervalId = setInterval(refreshPage, 20000);
     
-    log.info("TWEET MONITORING CONFIGURED - UPDATING EVERY 17 SECONDS");
+    log.info("TWEET MONITORING CONFIGURED - UPDATING EVERY 20 SECONDS");
     return true;
   } catch (error) {
     log.error("ERROR SETTING UP MONITORING:", error);
@@ -1219,5 +1222,197 @@ ipcMain.handle('get-twitter-profile-info', async (event, username) => {
   } catch (error) {
     log.error(`Error in get-twitter-profile-info handler:`, error);
     return { success: false, error: error.message };
+  }
+});
+
+// Gemini API implementation
+async function analyzeTextWithGemini(apiKey, tweets, coinName) {
+  try {
+    if (!apiKey) {
+      aiLog.error('Gemini API key missing');
+      return {
+        success: false,
+        error: 'Gemini API key is missing. Please add it in Settings.'
+      };
+    }
+    
+    aiLog.info(`Starting analysis with Gemini API for ${tweets.length} tweets about ${coinName || 'unknown coin'}`);
+    
+    // Формируем текст для анализа из твитов
+    const tweetTexts = tweets.map(tweet => tweet.text || '').filter(text => text.trim() !== '');
+    
+    if (tweetTexts.length === 0) {
+      aiLog.error('No tweet texts to analyze');
+      return {
+        success: false,
+        error: 'No tweets to analyze.'
+      };
+    }
+    
+    // Объединяем твиты в один текст для анализа
+    const tweetsContent = tweetTexts.join('\n\n');
+    aiLog.info(`Prepared ${tweetTexts.length} tweets for analysis, total length: ${tweetsContent.length} chars`);
+    
+    // Определяем промпт для Gemini
+    const prompt = `
+    You are a financial sentiment analysis expert. Analyze the following tweets about the cryptocurrency ${coinName || 'coin'}.
+    
+    Please provide:
+    1. The overall sentiment (positive, neutral, or negative)
+    2. The percentage breakdown of sentiment (positive, neutral, negative) with exact numbers adding up to 100%
+    3. A brief summary of key insights about what people are saying
+    4. A list of key topics or phrases mentioned (max 5)
+    
+    Format your response as a JSON object with the following structure:
+    {
+      "sentiment": "positive/neutral/negative",
+      "sentimentBreakdown": {
+        "positive": 33,
+        "neutral": 34,
+        "negative": 33
+      },
+      "insights": "Your insights here...",
+      "keyPhrases": ["phrase1", "phrase2", "phrase3"]
+    }
+    
+    Here are the tweets to analyze:
+    ${tweetsContent}
+    `;
+    
+    aiLog.info(`Sending request to Gemini API - prompt length: ${prompt.length}`);
+    
+    // Вызываем Gemini API
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    aiLog.info(`Using Gemini API URL: ${apiUrl.replace(apiKey, "API_KEY_HIDDEN")}`);
+    
+    const response = await axios.post(
+      apiUrl,
+      {
+        contents: [
+          {
+            parts: [
+              {
+                text: prompt
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.2,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 1024
+        }
+      }
+    );
+    
+    aiLog.info(`Got response from Gemini API - status: ${response.status}`);
+    
+    // Проверяем ответ от Gemini
+    if (response.data && 
+        response.data.candidates && 
+        response.data.candidates[0] && 
+        response.data.candidates[0].content && 
+        response.data.candidates[0].content.parts && 
+        response.data.candidates[0].content.parts[0] && 
+        response.data.candidates[0].content.parts[0].text) {
+      
+      // Извлекаем текст ответа
+      const responseText = response.data.candidates[0].content.parts[0].text;
+      aiLog.info(`Gemini response raw text length: ${responseText.length}`);
+      
+      // Пытаемся извлечь JSON из ответа с помощью регулярных выражений
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      
+      if (jsonMatch) {
+        try {
+          const analysisResult = JSON.parse(jsonMatch[0]);
+          
+          // Возвращаем результат анализа
+          aiLog.info(`Successfully parsed Gemini response as JSON: ${JSON.stringify(analysisResult)}`);
+          return {
+            success: true,
+            data: analysisResult
+          };
+        } catch (parseError) {
+          aiLog.error('Error parsing Gemini response as JSON:', parseError);
+          aiLog.info(`Raw response that couldn't be parsed: ${responseText}`);
+          return {
+            success: false,
+            error: 'Failed to parse Gemini response',
+            rawResponse: responseText
+          };
+        }
+      } else {
+        aiLog.error('No JSON found in Gemini response');
+        aiLog.info(`Raw response without valid JSON: ${responseText}`);
+        return {
+          success: false,
+          error: 'Invalid response format from Gemini',
+          rawResponse: responseText
+        };
+      }
+    } else {
+      aiLog.error('Invalid response structure from Gemini:', JSON.stringify(response.data || {}));
+      return {
+        success: false,
+        error: 'Invalid response from Gemini API'
+      };
+    }
+  } catch (error) {
+    aiLog.error('Error calling Gemini API:', error);
+    if (error.response) {
+      aiLog.error(`Gemini API error details: status=${error.response.status}, data=${JSON.stringify(error.response.data || {})}`);
+    }
+    return {
+      success: false,
+      error: error.message || 'Failed to communicate with Gemini API'
+    };
+  }
+}
+
+// Добавляем обработчик для анализа твитов с Gemini
+ipcMain.handle('analyze-tweets-with-gemini', async (event, { apiKey, tweets, coinName }) => {
+  try {
+    return await analyzeTextWithGemini(apiKey, tweets, coinName);
+  } catch (error) {
+    aiLog.error('Error in analyze-tweets-with-gemini handler:', error);
+    return {
+      success: false,
+      error: error.message || 'An error occurred during analysis'
+    };
+  }
+});
+
+// Add handlers for Gemini API key storage in application settings
+ipcMain.handle('get-gemini-api-key', async () => {
+  try {
+    // Get API key from electron-store
+    return store.get('geminiApiKey', '');
+  } catch (error) {
+    aiLog.error('Error getting Gemini API key from store:', error);
+    return '';
+  }
+});
+
+ipcMain.handle('save-gemini-api-key', async (event, apiKey) => {
+  try {
+    // Save API key to electron-store
+    store.set('geminiApiKey', apiKey);
+    return { success: true };
+  } catch (error) {
+    aiLog.error('Error saving Gemini API key to store:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Add handler to get search keywords
+ipcMain.handle('get-keywords', async () => {
+  try {
+    // Get keywords from electron-store
+    return store.get('keywords', []);
+  } catch (error) {
+    log.error('Error getting keywords from store:', error);
+    return [];
   }
 });

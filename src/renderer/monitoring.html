@@ -5,496 +5,724 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Twitter Monitoring</title>
   <style>
-    :root {
-      /* Тёмная тема - основные цвета */
-      --bg-primary: #1e1e2e;
-      --bg-secondary: #282838;
-      --text-primary: #e0e0e0;
-      --text-secondary: #a0a0a0;
-      --accent: #1d9bf0;
-      --accent-hover: #1a8cd8;
-      --danger: #f4212e;
-      --danger-hover: #e01e2a;
-      --success: #00ba7c;
-      --border: #404050;
-      --card-bg: #242432;
-    }
-    
+    /* Main styles for monitoring page */
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #15202b;
+      color: #ffffff;
       margin: 0;
       padding: 0;
-      background-color: var(--bg-primary);
-      color: var(--text-primary);
-      overflow: hidden;
-      line-height: 1.5;
-    }
-    
-    .monitoring-container {
-      display: flex;
       height: 100vh;
-    }
-    
-    .sidebar-section {
-      width: 350px;
-      border-left: 1px solid var(--border);
-      height: 100%;
-      overflow-y: auto;
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      background-color: var(--bg-secondary);
-      padding: 0 15px;
-    }
-    
-    .tweets-section {
-      flex: 1;
-      padding: 0;
-      overflow-y: auto;
-      box-sizing: border-box;
-      height: 100%;
-      background-color: var(--bg-primary);
-    }
-    
-    .tweets-list {
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-      padding: 20px;
-    }
-    
-    .tweet-item {
-      background-color: var(--card-bg);
-      border-radius: 16px;
       overflow: hidden;
-      border: 1px solid var(--border);
-      transition: all 0.2s ease;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     }
-    
-    .tweet-item:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    }
-    
-    .tweet-item .card-header {
-      padding: 12px 20px;
+
+    .container {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid var(--border);
-    }
-    
-    .tweet-item .card-body {
-      padding: 15px 20px;
-    }
-    
-    .tweet-text {
-      margin: 0;
-      white-space: pre-wrap;
-      word-break: break-word;
-      line-height: 1.5;
-    }
-    
-    .excluded-tweet {
-      opacity: 0.6;
-    }
-    
-    .excluded-tweet .tweet-text {
-      text-decoration: line-through;
-    }
-    
-    .browser-header {
-      padding: 15px 20px;
-      background-color: var(--bg-secondary);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    
-    .browser-title {
-      margin: 0;
-      font-size: 18px;
-      color: var(--accent);
-      font-weight: 600;
-    }
-    
-    h2 {
-      color: var(--accent);
-      margin-top: 20px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 15px;
-      font-size: 22px;
-      font-weight: 600;
-    }
-    
-    .stat-card {
-      background-color: var(--card-bg);
-      border-radius: 12px;
-      padding: 15px;
-      margin-bottom: 15px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-      border: 1px solid var(--border);
-      position: relative;
-      transition: all 0.3s ease;
-    }
-    
-    .stat-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-    }
-    
-    .stat-title {
-      font-weight: 600;
-      margin-bottom: 10px;
-      color: var(--text-secondary);
-      font-size: 14px;
-    }
-    
-    .stat-value-wrapper {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 5px;
-    }
-    
-    .stat-value {
-      font-size: 20px;
-      font-weight: 700;
-      color: var(--text-primary);
-    }
-    
-    .trend-indicator {
-      margin-left: 10px;
-      font-size: 16px;
-      background-color: rgba(255, 255, 255, 0.1);
-      width: 28px;
-      height: 28px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 50%;
-      font-weight: bold;
-    }
-    
-    .trend-up {
-      color: var(--success);
-      background-color: rgba(0, 186, 124, 0.15);
-    }
-    
-    .trend-down {
-      color: var(--danger);
-      background-color: rgba(244, 33, 46, 0.15);
-    }
-    
-    .trend-neutral {
-      color: var(--text-secondary);
-    }
-    
-    .trend-value {
-      font-size: 14px;
-      font-weight: 600;
-      white-space: nowrap;
-      padding: 2px 6px;
-      border-radius: 4px;
-    }
-    
-    .trend-value.up {
-      color: var(--success);
-      background-color: rgba(0, 186, 124, 0.1);
-    }
-    
-    .trend-value.down {
-      color: var(--danger);
-      background-color: rgba(244, 33, 46, 0.1);
-    }
-    
-    .trend-chart {
-      margin-top: 5px;
+      flex-direction: row;
+      height: 100vh;
       width: 100%;
-      height: 70px;
-      border-radius: 4px;
-      background-color: rgba(0, 0, 0, 0.1);
+      padding: 0;
+      margin: 0;
     }
-    
+
+    .tweets-section {
+      display: grid;
+      grid-template-columns: 1fr 480px;
+      height: 100vh;
+      width: 100%;
+    }
+
+    .tweets-container {
+      flex: 1;
+      overflow-y: auto;
+      border-right: 1px solid #38444d;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background-color: #15202b;
+      padding: 15px;
+      border-bottom: 1px solid #38444d;
+    }
+
+    .title {
+      margin: 0;
+      font-size: 1.5rem;
+      margin-bottom: 10px;
+      color: #ffffff;
+    }
+
+    .search-info {
+      background-color: #192734;
+      padding: 10px;
+      border-radius: 5px;
+    }
+
+    .search-keywords {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .keyword-tag {
+      background-color: #1da1f2;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 15px;
+      font-size: 0.9rem;
+    }
+
+    #excludedTermsContainer {
+      margin-top: 10px;
+      background-color: #192734;
+      padding: 10px;
+      border-radius: 5px;
+      display: none;
+    }
+
+    .excluded-terms-label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #f8f9fa;
+    }
+
+    #excludedTermsList {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    #excludedTermsList .keyword-tag {
+      background-color: #e0245e;
+    }
+
+    /* Enhanced Stats section styling */
+    .stats {
+      margin-top: 15px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 15px;
+    }
+
+    .stat-card {
+      background-color: #192734;
+      border-radius: 12px;
+      padding: 12px 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      position: relative;
+      transition: transform 0.2s, box-shadow 0.2s;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .stat-card:before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(to right, #1da1f2, #17bf63);
+    }
+
+    .stat-label {
+      display: block;
+      color: #8899a6;
+      font-size: 0.8rem;
+      margin-bottom: 4px;
+      font-weight: 500;
+    }
+
+    .stat-value {
+      font-size: 1.6rem;
+      font-weight: bold;
+      color: #ffffff;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      margin-bottom: 2px;
+      line-height: 1.2;
+    }
+
+    .trend-indicator {
+      display: inline-block;
+      margin-left: 3px;
+      font-size: 1rem;
+      vertical-align: middle;
+    }
+
+    .trend-value {
+      font-size: 0.8rem;
+      color: #8899a6;
+      margin-left: 3px;
+    }
+
+    canvas {
+      display: block;
+      margin-top: 8px;
+      width: 100%;
+      height: 60px;
+    }
+
+    /* Animation for trend changes */
     @keyframes pulse-up {
-      0% { box-shadow: 0 0 0 0 rgba(0, 186, 124, 0.4); }
-      70% { box-shadow: 0 0 0 10px rgba(0, 186, 124, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(0, 186, 124, 0); }
+      0% { box-shadow: 0 0 0 0 rgba(23, 191, 99, 0.5); }
+      70% { box-shadow: 0 0 0 10px rgba(23, 191, 99, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(23, 191, 99, 0); }
     }
-    
+
     @keyframes pulse-down {
-      0% { box-shadow: 0 0 0 0 rgba(244, 33, 46, 0.4); }
-      70% { box-shadow: 0 0 0 10px rgba(244, 33, 46, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(244, 33, 46, 0); }
+      0% { box-shadow: 0 0 0 0 rgba(224, 36, 94, 0.5); }
+      70% { box-shadow: 0 0 0 10px rgba(224, 36, 94, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(224, 36, 94, 0); }
     }
-    
+
     .pulse-up {
       animation: pulse-up 2s 1;
-      background-color: var(--card-bg);
-      position: relative;
-      z-index: 1;
     }
-    
+
     .pulse-down {
       animation: pulse-down 2s 1;
-      background-color: var(--card-bg);
-      position: relative;
-      z-index: 1;
     }
-    
-    .history-tooltip {
-      position: absolute;
-      background-color: var(--bg-secondary);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 8px 12px;
-      z-index: 1000;
-      font-size: 12px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.2s;
-    }
-    
-    .keyword-list {
-      margin-bottom: 20px;
-    }
-    
-    .keyword-tag {
-      background-color: rgba(29, 155, 240, 0.1);
-      padding: 6px 12px;
-      border-radius: 20px;
-      display: inline-block;
-      margin: 0 5px 5px 0;
-      font-size: 14px;
-      color: var(--text-primary);
-      border: 1px solid rgba(29, 155, 240, 0.3);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-    
-    .stop-button {
-      background-color: var(--danger);
+
+    #stopAnalysisBtn {
+      background-color: #e0245e;
       color: white;
       border: none;
-      border-radius: 30px;
-      padding: 14px 24px;
-      font-size: 16px;
+      padding: 10px 15px;
+      border-radius: 5px;
       cursor: pointer;
-      transition: all 0.2s ease;
-      display: block;
-      width: calc(100% - 30px);
-      margin: 20px auto;
-      font-weight: 600;
-      box-shadow: 0 4px 8px rgba(244, 33, 46, 0.3);
-    }
-    
-    .stop-button:hover {
-      background-color: var(--danger-hover);
-      transform: translateY(-2px);
-      box-shadow: 0 6px 10px rgba(244, 33, 46, 0.4);
-    }
-    
-    .stop-button:active {
-      transform: translateY(0);
-      box-shadow: 0 2px 5px rgba(244, 33, 46, 0.2);
+      font-weight: bold;
+      margin-top: 15px;
+      transition: background-color 0.2s;
     }
 
-    .stop-button-compact {
-      background-color: var(--danger);
+    #stopAnalysisBtn:hover {
+      background-color: #c0142e;
+    }
+
+    /* Show Analysis Button at top */
+    #showAnalysisTopBtn {
+      margin-left: 10px;
+      background-color: #1da1f2;
       color: white;
       border: none;
-      border-radius: 20px;
-      padding: 8px 16px;
-      font-size: 14px;
+      padding: 5px 10px;
+      border-radius: 5px;
       cursor: pointer;
-      transition: all 0.2s ease;
-      font-weight: 600;
-      box-shadow: 0 4px 8px rgba(244, 33, 46, 0.3);
+      font-weight: bold;
+      font-size: 0.8rem;
+      vertical-align: middle;
+      display: none; /* Hidden by default */
     }
 
-    .stop-button-compact:hover {
-      background-color: var(--danger-hover);
+    #showAnalysisTopBtn:hover {
+      background-color: #1a91da;
+    }
+
+    /* Tweets list */
+    .tweets {
+      overflow-y: auto;
+      padding: 15px;
+      flex-grow: 1;
+    }
+
+    .tweet-item {
+      background-color: #192734;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      transition: transform 0.2s;
+      overflow: hidden;
+    }
+
+    .tweet-item:hover {
       transform: translateY(-2px);
-      box-shadow: 0 6px 10px rgba(244, 33, 46, 0.4);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
     }
 
-    .stop-button-compact:active {
-      transform: translateY(0);
-      box-shadow: 0 2px 5px rgba(244, 33, 46, 0.2);
+    .excluded-tweet {
+      opacity: 0.7;
     }
-    
-    .twitter-status-indicator {
-      margin: 15px 20px;
-      font-size: 14px;
-      color: var(--text-secondary);
+
+    .card-header {
       display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 15px;
+    }
+
+    .card-body {
+      padding: 15px;
+    }
+
+    .tweet-text {
+      margin: 0;
+      line-height: 1.5;
+      font-size: 1rem;
+      white-space: pre-wrap;
+    }
+
+    .loading-info {
+      font-style: italic;
+      color: #8899a6;
+      font-size: 0.9rem;
+    }
+
+    /* Notificatons */
+    .tweet-notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background-color: rgba(29, 161, 242, 0.9);
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      max-width: 350px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    @media (prefers-color-scheme: light) {
+      body {
+        background-color: #ffffff;
+        color: #000000;
+      }
+      
+      .header {
+        background-color: #ffffff;
+      }
+      
+      .title {
+        color: #000000;
+      }
+      
+      .search-info {
+        background-color: #f5f8fa;
+      }
+      
+      #excludedTermsContainer {
+        background-color: #f5f8fa;
+      }
+      
+      .excluded-terms-label {
+        color: #14171a;
+      }
+      
+      .tweet-item {
+        background-color: #f5f8fa;
+      }
+      
+      .tweet-text {
+        color: #14171a;
+      }
+      
+      .loading-info {
+        color: #657786;
+      }
+    }
+
+    /* AI Analysis Section Styles */
+    .ai-analysis-section {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      border-left: 1px solid #38444d;
+      background-color: #192734;
+      width: 480px;
+      overflow-y: auto;
+    }
+    
+    .ai-header {
+      padding: 15px;
+      border-bottom: 1px solid #38444d;
+      position: sticky;
+      top: 0;
+      background-color: #192734;
+      z-index: 5;
+      display: flex;
+      justify-content: space-between;
       align-items: center;
     }
     
-    .status-dot {
-      display: inline-block;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      margin-right: 10px;
+    .ai-title {
+      margin: 0;
+      font-size: 1.3rem;
+      color: #ffffff;
     }
     
-    .status-dot.active {
-      background-color: var(--success);
-      box-shadow: 0 0 10px rgba(0, 186, 124, 0.5);
+    .ai-status {
+      font-size: 0.8rem;
+      color: #8899a6;
     }
     
-    .tweet-notification {
-      position: fixed;
-      bottom: 20px;
-      left: 20px;
-      background-color: var(--accent);
-      color: white;
-      padding: 12px 20px;
-      border-radius: 10px;
-      box-shadow: 0 4px 15px rgba(29, 155, 240, 0.3);
-      z-index: 9999;
-      max-width: 350px;
-      word-wrap: break-word;
-      opacity: 0;
-      transition: all 0.3s ease;
-      border-left: 4px solid var(--accent-hover);
+    .ai-content {
+      padding: 15px;
+      overflow-y: auto;
+      flex-grow: 1;
     }
     
-    .footer {
-      text-align: center;
-      padding: 15px 0;
-      border-top: 1px solid var(--border);
-      margin-top: auto;
-      font-size: 12px;
-      color: var(--text-secondary);
+    .ai-card {
+      background-color: #22303c;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      padding: 15px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     }
     
-    .footer a {
-      color: var(--accent);
-      text-decoration: none;
+    .ai-card h4 {
+      margin-top: 0;
+      margin-bottom: 15px;
+      color: #1da1f2;
+      font-size: 1.1rem;
     }
     
-    .footer a:hover {
-      text-decoration: underline;
+    .sentiment-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
     }
     
-    /* Scrollbar Styling */
-    ::-webkit-scrollbar {
-      width: 8px;
-    }
-    
-    ::-webkit-scrollbar-track {
-      background: var(--bg-primary);
-    }
-    
-    ::-webkit-scrollbar-thumb {
-      background-color: var(--border);
+    .sentiment-indicator {
+      font-weight: bold;
+      padding: 3px 8px;
       border-radius: 4px;
+      font-size: 0.9rem;
     }
     
-    ::-webkit-scrollbar-thumb:hover {
-      background-color: #505060;
+    .sentiment-indicator.positive {
+      background-color: #17bf63;
+      color: white;
+    }
+    
+    .sentiment-indicator.neutral {
+      background-color: #794bc4;
+      color: white;
+    }
+    
+    .sentiment-indicator.negative {
+      background-color: #e0245e;
+      color: white;
+    }
+    
+    .sentiment-details {
+      margin-top: 15px;
+    }
+    
+    .sentiment-bar-container {
+      margin-bottom: 10px;
+    }
+    
+    .sentiment-label {
+      display: inline-block;
+      width: 70px;
+      font-size: 0.9rem;
+    }
+    
+    .sentiment-bar-wrapper {
+      display: inline-flex;
+      width: calc(100% - 80px);
+      height: 12px;
+      background-color: #38444d;
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .sentiment-bar {
+      height: 100%;
+      border-radius: 6px;
+      transition: width 0.5s ease;
+    }
+    
+    .sentiment-bar.positive {
+      background-color: #17bf63;
+    }
+    
+    .sentiment-bar.neutral {
+      background-color: #794bc4;
+    }
+    
+    .sentiment-bar.negative {
+      background-color: #e0245e;
+    }
+    
+    .sentiment-percentage {
+      position: absolute;
+      right: 5px;
+      top: -3px;
+      font-size: 0.8rem;
+      color: white;
+      text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+    }
+    
+    .ai-insights {
+      color: #ffffff;
+      line-height: 1.5;
+    }
+    
+    .ai-insight-placeholder {
+      color: #8899a6;
+      font-style: italic;
+      text-align: center;
+      padding: 20px 0;
+    }
+    
+    .key-phrases-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    
+    .key-phrase {
+      background-color: #1da1f2;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 15px;
+      font-size: 0.9rem;
+    }
+    
+    .ai-actions {
+      padding: 15px;
+      border-top: 1px solid #38444d;
+      display: flex;
+      justify-content: space-between;
+    }
+    
+    .refresh-analysis-btn, .toggle-ai-btn {
+      padding: 8px 15px;
+      border-radius: 5px;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    .refresh-analysis-btn {
+      background-color: #1da1f2;
+      color: white;
+    }
+    
+    .refresh-analysis-btn:hover {
+      background-color: #1a91da;
+    }
+    
+    .toggle-ai-btn {
+      background-color: #38444d;
+      color: white;
+    }
+    
+    .toggle-ai-btn:hover {
+      background-color: #2d3741;
+    }
+    
+    .refresh-analysis-btn:disabled {
+      background-color: #38444d;
+      cursor: not-allowed;
+    }
+    
+    /* Light theme overrides for AI section */
+    @media (prefers-color-scheme: light) {
+      .ai-analysis-section {
+        background-color: #f5f8fa;
+        border-left: 1px solid #e1e8ed;
+      }
+      
+      .ai-header {
+        background-color: #f5f8fa;
+        border-bottom: 1px solid #e1e8ed;
+      }
+      
+      .ai-title {
+        color: #14171a;
+      }
+      
+      .ai-status {
+        color: #657786;
+      }
+      
+      .ai-card {
+        background-color: #ffffff;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+      
+      .ai-card h4 {
+        color: #1da1f2;
+      }
+      
+      .sentiment-bar-wrapper {
+        background-color: #e1e8ed;
+      }
+      
+      .ai-insights {
+        color: #14171a;
+      }
+      
+      .ai-insight-placeholder {
+        color: #657786;
+      }
+      
+      .ai-actions {
+        border-top: 1px solid #e1e8ed;
+      }
+      
+      .toggle-ai-btn {
+        background-color: #e1e8ed;
+        color: #14171a;
+      }
+      
+      .toggle-ai-btn:hover {
+        background-color: #d1d8dd;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="monitoring-container">
-    <!-- Tweets Section (Left) -->
+  <div class="container">
     <div class="tweets-section">
-      <div class="browser-header">
-        <h3 class="browser-title">Found Tweets</h3>
-        <button id="stopAnalysisBtn" class="stop-button-compact">Stop Analysis</button>
-      </div>
-      
-      <div class="twitter-status-indicator">
-        <span class="status-dot active"></span> Twitter monitoring is active
-      </div>
-      
-      <!-- Tweets list will be populated here -->
-      <div id="tweetsList" class="tweets-list"></div>
-    </div>
-    
-    <!-- Stats Section (Right Sidebar) -->
-    <div class="sidebar-section">
-      <h2>Monitoring Statistics</h2>
-      
-      <div class="keyword-list">
-        <div class="stat-title">Tracking Keywords:</div>
-        <div id="keywordsList"></div>
-      </div>
-      
-      <div class="keyword-list" id="excludedTermsContainer" style="display: none;">
-        <div class="stat-title">Excluded Terms:</div>
-        <div id="excludedTermsList"></div>
-      </div>
-      
-      <div class="stat-card">
-        <div class="stat-title">Total Posts Detected</div>
-        <div id="totalPosts" class="stat-value">0</div>
-      </div>
-      
-      <div class="stat-card">
-        <div class="stat-title">Posts in Last Minute</div>
-        <div class="stat-value-wrapper">
-          <div id="posts1min" class="stat-value">0</div>
-          <span id="trendValue1min" class="trend-value"></span>
+      <div class="tweets-container">
+        <div class="header">
+          <h1 class="title">Twitter Monitoring <button id="stopAnalysisBtn" class="btn btn-danger" style="display: inline-block; margin-left: 15px; vertical-align: middle; font-size: 0.8rem; padding: 5px 10px;">Stop Analysis</button>
+          <button id="showAnalysisTopBtn">Show Analysis</button></h1>
+          
+          <div class="search-info">
+            <div class="search-keywords" id="keywordsList"></div>
+          </div>
+          
+          <div id="excludedTermsContainer">
+            <span class="excluded-terms-label">Excluded Terms:</span>
+            <div id="excludedTermsList"></div>
+          </div>
+          
+          <div class="stats">
+            <div class="stat-card">
+              <span class="stat-label">Total:</span>
+              <span class="stat-value" id="totalPosts">0</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">1 min:</span>
+              <span class="stat-value" id="posts1min">0</span>
+              <canvas id="chart1min" width="100" height="60"></canvas>
+              <div class="trend-indicator" id="trend1min"></div>
+              <span class="trend-value" id="trendValue1min"></span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">5 min:</span>
+              <span class="stat-value" id="posts5min">0</span>
+              <canvas id="chart5min" width="100" height="60"></canvas>
+              <div class="trend-indicator" id="trend5min"></div>
+              <span class="trend-value" id="trendValue5min"></span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">15 min:</span>
+              <span class="stat-value" id="posts15min">0</span>
+              <canvas id="chart15min" width="100" height="60"></canvas>
+              <div class="trend-indicator" id="trend15min"></div>
+              <span class="trend-value" id="trendValue15min"></span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">30 min:</span>
+              <span class="stat-value" id="posts30min">0</span>
+              <canvas id="chart30min" width="100" height="60"></canvas>
+              <div class="trend-indicator" id="trend30min"></div>
+              <span class="trend-value" id="trendValue30min"></span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">60 min:</span>
+              <span class="stat-value" id="posts60min">0</span>
+              <canvas id="chart60min" width="100" height="60"></canvas>
+              <div class="trend-indicator" id="trend60min"></div>
+              <span class="trend-value" id="trendValue60min"></span>
+            </div>
+          </div>
         </div>
-        <canvas id="chart1min" class="trend-chart" width="280" height="70"></canvas>
+        
+        <div class="tweets" id="tweetsList"></div>
       </div>
       
-      <div class="stat-card">
-        <div class="stat-title">Posts in Last 5 Minutes</div>
-        <div class="stat-value-wrapper">
-          <div id="posts5min" class="stat-value">0</div>
-          <span id="trendValue5min" class="trend-value"></span>
+      <!-- AI Analysis Section -->
+      <div class="ai-analysis-section">
+        <div class="ai-header">
+          <h2 class="ai-title">Gemini AI Analysis</h2>
+          <span id="lastAnalysisTime" class="ai-status">Not analyzed yet</span>
         </div>
-        <canvas id="chart5min" class="trend-chart" width="280" height="70"></canvas>
-      </div>
-      
-      <div class="stat-card">
-        <div class="stat-title">Posts in Last 15 Minutes</div>
-        <div class="stat-value-wrapper">
-          <div id="posts15min" class="stat-value">0</div>
-          <span id="trendValue15min" class="trend-value"></span>
+        
+        <div class="ai-content">
+          <div class="ai-card">
+            <h4>Sentiment Analysis</h4>
+            <div class="sentiment-header">
+              <span>Overall Sentiment:</span>
+              <span id="overallSentiment" class="sentiment-indicator neutral">NEUTRAL</span>
+            </div>
+            
+            <div class="sentiment-details">
+              <div class="sentiment-bar-container">
+                <span class="sentiment-label">Positive</span>
+                <div class="sentiment-bar-wrapper">
+                  <div id="positiveSentimentBar" class="sentiment-bar positive" style="width: 33%;"></div>
+                  <span id="positiveSentimentValue" class="sentiment-percentage">33%</span>
+                </div>
+              </div>
+              
+              <div class="sentiment-bar-container">
+                <span class="sentiment-label">Neutral</span>
+                <div class="sentiment-bar-wrapper">
+                  <div id="neutralSentimentBar" class="sentiment-bar neutral" style="width: 34%;"></div>
+                  <span id="neutralSentimentValue" class="sentiment-percentage">34%</span>
+                </div>
+              </div>
+              
+              <div class="sentiment-bar-container">
+                <span class="sentiment-label">Negative</span>
+                <div class="sentiment-bar-wrapper">
+                  <div id="negativeSentimentBar" class="sentiment-bar negative" style="width: 33%;"></div>
+                  <span id="negativeSentimentValue" class="sentiment-percentage">33%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="ai-card">
+            <h4>AI Insights</h4>
+            <div id="aiInsights" class="ai-insights">
+              <div class="ai-insight-placeholder">
+                <p>Click "Analyze Tweets" to generate insights about the current tweets.</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="ai-card">
+            <h4>Key Topics</h4>
+            <div id="keyPhrasesContainer" class="key-phrases-container">
+              <!-- Key phrases will be inserted here -->
+            </div>
+          </div>
         </div>
-        <canvas id="chart15min" class="trend-chart" width="280" height="70"></canvas>
-      </div>
-      
-      <div class="stat-card">
-        <div class="stat-title">Posts in Last 30 Minutes</div>
-        <div class="stat-value-wrapper">
-          <div id="posts30min" class="stat-value">0</div>
-          <span id="trendValue30min" class="trend-value"></span>
+        
+        <div class="ai-actions">
+          <button id="refreshAnalysisBtn" class="refresh-analysis-btn">Analyze Tweets</button>
+          <button id="toggleAiBtn" class="toggle-ai-btn">Hide Analysis</button>
         </div>
-        <canvas id="chart30min" class="trend-chart" width="280" height="70"></canvas>
-      </div>
-      
-      <div class="stat-card">
-        <div class="stat-title">Posts in Last 60 Minutes</div>
-        <div class="stat-value-wrapper">
-          <div id="posts60min" class="stat-value">0</div>
-          <span id="trendValue60min" class="trend-value"></span>
-        </div>
-        <canvas id="chart60min" class="trend-chart" width="280" height="70"></canvas>
-      </div>
-      
-      <div class="stat-card">
-        <div class="stat-title">Filtered Posts</div>
-        <div id="filteredPosts" class="stat-value">0</div>
-      </div>
-      
-      <button id="stopAnalysisBtn" class="stop-button">Stop Analysis</button>
-      
-      <!-- Footer с информацией об авторе -->
-      <div class="footer">
-        <p>Created by <a href="#">Nameless Duck</a> &copy; 2025</p>
       </div>
     </div>
   </div>
-  
-  <script src="./monitoring.js"></script>
+
+  <script src="monitoring.js"></script>
 </body>
 </html>
