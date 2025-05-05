@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
       '60min': 0
     },
     processedTweetIds: new Set(), // Track unique tweet IDs
+    processedContentHashes: new Set(), // Track unique content hashes
     excludedTerms: [] // Сохраняем исключенные термины
   };
   
@@ -101,16 +102,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     try {
-      // Проверяем уникальность твита
+      // Проверяем уникальность твита - смотрим только на ID, а не на весь текст
+      // Это гарантирует, что один и тот же твит не будет добавлен повторно
       if (stats.processedTweetIds.has(postData.id)) {
         console.log(`MONITORING UI: Дубликат твита с ID ${postData.id} пропущен`);
         return; // Пропускаем дубликаты
+      }
+      
+      // Проверяем, не обрабатывали ли мы уже этот твит по частичному совпадению
+      // Это дополнительная проверка для твитов с разными ID, но одинаковым текстом
+      if (postData.text && postData.text.length > 20) {
+        // Создаем хеш из первых 20 символов текста и автора
+        const textAndAuthorHash = `${postData.author}_${postData.text.substring(0, 20)}`;
+        
+        // Проверяем, есть ли в кэше
+        if (stats.processedContentHashes.has(textAndAuthorHash)) {
+          console.log(`MONITORING UI: Твит с похожим содержимым пропущен: ${textAndAuthorHash}`);
+          return;
+        }
+        
+        // Добавляем хеш в обработанные
+        stats.processedContentHashes.add(textAndAuthorHash);
       }
       
       // Добавляем ID твита в обработанные
       stats.processedTweetIds.add(postData.id);
       
       console.log(`MONITORING UI: Обработка нового твита: ${postData.id}`);
+      
+      // Показываем визуальную индикацию нового твита
+      showNewTweetIndicator();
       
       // Текущее время для статистики
       const timestamp = Date.now();
@@ -144,6 +165,62 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('MONITORING UI: Ошибка при обработке данных твита:', error);
     }
   });
+  
+  // Визуальная индикация нового твита
+  function showNewTweetIndicator() {
+    try {
+      // Добавить мигающий индикатор в верхнюю часть страницы
+      const indicator = document.createElement('div');
+      
+      // Задаем стили
+      Object.assign(indicator.style, {
+        position: 'fixed',
+        top: '10px',
+        right: '10px',
+        backgroundColor: '#1da1f2', // Twitter синий
+        color: 'white',
+        padding: '6px 12px',
+        borderRadius: '20px',
+        zIndex: '9999',
+        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3)',
+        animation: 'pulse 1s infinite alternate'
+      });
+      
+      // Добавляем анимацию
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes pulse {
+          0% { opacity: 0.7; transform: scale(1); }
+          100% { opacity: 1; transform: scale(1.1); }
+        }
+      `;
+      document.head.appendChild(style);
+      
+      // Текст индикатора
+      indicator.textContent = '🔔 Новый твит получен!';
+      
+      // Добавляем в DOM
+      document.body.appendChild(indicator);
+      
+      // Удаляем через 3 секунды
+      setTimeout(() => {
+        indicator.style.transition = 'opacity 0.5s, transform 0.5s';
+        indicator.style.opacity = '0';
+        indicator.style.transform = 'translateY(-20px)';
+        
+        setTimeout(() => {
+          if (indicator.parentNode) {
+            indicator.parentNode.removeChild(indicator);
+          }
+          if (style.parentNode) {
+            style.parentNode.removeChild(style);
+          }
+        }, 500);
+      }, 3000);
+    } catch (err) {
+      console.error('Ошибка при отображении индикатора:', err);
+    }
+  }
   
   // Добавляем твит в список твитов
   function addTweetToList(postData) {
@@ -298,16 +375,50 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Обновляем индикатор тренда
   function updateTrendIndicator(element, currentValue, previousValue) {
+    // Очищаем предыдущие классы
+    element.classList.remove('trend-up', 'trend-down', 'trend-neutral');
+    
+    // Сбрасываем значение родительского контейнера
+    if (element.parentNode) {
+      element.parentNode.style.color = '';
+    }
+    
     if (currentValue > previousValue) {
+      // Положительная динамика - зеленый цвет и стрелка вверх
       element.textContent = '↑';
       element.className = 'trend-indicator trend-up';
+      
+      // Дополнительно выделяем число зеленым цветом
+      if (element.parentNode) {
+        element.parentNode.style.color = 'var(--success)';
+      }
     } else if (currentValue < previousValue) {
+      // Отрицательная динамика - красный цвет и стрелка вниз
       element.textContent = '↓';
       element.className = 'trend-indicator trend-down';
+      
+      // Дополнительно выделяем число красным цветом
+      if (element.parentNode) {
+        element.parentNode.style.color = 'var(--danger)';
+      }
     } else {
+      // Нет изменений - нейтральный цвет
       element.textContent = '—';
       element.className = 'trend-indicator trend-neutral';
     }
+    
+    // Добавляем всплывающую подсказку для сравнения
+    const percentChange = previousValue === 0 
+      ? (currentValue > 0 ? '+∞%' : '0%')
+      : Math.round((currentValue - previousValue) / previousValue * 100) + '%';
+    
+    const tooltip = currentValue > previousValue 
+      ? `На ${Math.abs(currentValue - previousValue)} больше (${percentChange})`
+      : currentValue < previousValue 
+        ? `На ${Math.abs(currentValue - previousValue)} меньше (${percentChange})`
+        : 'Без изменений';
+    
+    element.title = tooltip;
   }
   
   // Подсчитываем количество постов в заданном временном диапазоне

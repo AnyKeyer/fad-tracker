@@ -77,4 +77,16 @@ window.addEventListener('message', (event) => {
       console.error('Error handling message in preload.js:', error);
     }
   }
+  // Обработка запроса на перезагрузку страницы
+  else if (event.data && event.data.type === 'request-page-reload') {
+    try {
+      console.log('Page reload requested from TwitterPostObserver');
+      // Отправляем событие в main процесс, чтобы перезагрузить страницу
+      ipcRenderer.send('request-page-reload', {
+        timestamp: event.data.timestamp || Date.now()
+      });
+    } catch (error) {
+      console.error('Error handling page reload request in preload.js:', error);
+    }
+  }
 });

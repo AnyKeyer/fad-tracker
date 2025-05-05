@@ -406,54 +406,148 @@ ipcMain.handle('stop-analysis', async () => {
         page = null;
       }
     } else {
-      log.info("ℹ️ Browser already closed");
+      log.info("🔒 No browser instance to close");
     }
     
-    log.info("✅ Tweet monitoring stopped");
     return { success: true };
   } catch (error) {
     log.error("❌ Error stopping analysis:", error);
-    
-    // Force variables to null to prevent hanging references
-    monitoringWindow = null;
-    browser = null;
-    page = null;
-    
     return { success: false, error: error.message };
   }
 });
 
-// Listen for post monitoring events from the renderer process
-ipcMain.on('post-detected', (event, postData) => {
+// Set up page refresh interval - checking every 17 seconds
+let refreshIntervalId = null;
+
+// Function to refresh page that doesn't depend on window object
+async function refreshPage() {
   try {
-    log.info(`Post detected event received in main process: ${postData.id}`);
-    log.info(`Tweet from: ${postData.author}, text: ${postData.text ? postData.text.substring(0, 30) + "..." : "No text"}`);
+    if (!page) return;
     
-    // Проверяем формат полученных данных
-    if (!postData || !postData.id) {
-      log.error("Invalid post data received:", postData);
+    // Current time
+    const now = new Date();
+    const timeStr = now.toTimeString().substring(0, 8);
+    log.info(`Refreshing Twitter page [${timeStr}]`);
+    
+    // Check if the page is still valid
+    try {
+      await page.evaluate(() => document.title);
+    } catch (err) {
+      log.error("Page is no longer valid, stopping refresh interval");
+      clearInterval(refreshIntervalId);
+      refreshIntervalId = null;
       return;
     }
     
-    // Нормализуем данные, чтобы гарантировать их корректность
-    const normalizedData = {
-      id: postData.id,
-      text: postData.text || "No content available",
-      timestamp: postData.timestamp || Date.now(),
-      author: postData.author || "Unknown Author"
-    };
+    // Checking if TwitterPostObserver exists
+    const observerExists = await page.evaluate(() => {
+      return typeof window.TwitterPostObserver === 'function' && 
+             typeof window.twitterObserver !== 'undefined';
+    }).catch(() => false);
     
-    // Forward post data to monitoring window
-    if (monitoringWindow) {
-      log.info(`Forwarding tweet to monitoring window: ${normalizedData.id}`);
-      monitoringWindow.webContents.send('post-data', normalizedData);
-    } else {
-      log.error("Monitoring window not available, can't forward tweet data");
+    if (!observerExists) {
+      log.error("TwitterPostObserver lost from page context - reinjecting");
+      // Reinject observer if needed
+      if (typeof setupTweetMonitoring === 'function') {
+        await setupTweetMonitoring(page);
+      }
     }
-  } catch (error) {
-    log.error("Error processing post-detected event:", error);
+    
+    // Perform page reload
+    try {
+      // Get current timestamp
+      const now = Date.now();
+      
+      // Use static lastRefreshTime variable within the page context
+      const needsRefresh = await page.evaluate((timestamp) => {
+        // Initialize if it doesn't exist
+        window.lastPageRefreshTime = window.lastPageRefreshTime || 0;
+        
+        // Check if enough time has passed (17 seconds)
+        if (timestamp - window.lastPageRefreshTime >= 17000) {
+          // Update the timestamp
+          window.lastPageRefreshTime = timestamp;
+          return true;
+        }
+        return false;
+      }, now);
+      
+      if (needsRefresh) {
+        log.info("🔄 Performing full page reload (17-second interval)");
+        
+        // Save current URL
+        const currentUrl = await page.url();
+        
+        // Reload the page
+        await page.reload({ waitUntil: 'networkidle2' });
+        log.info("✅ Page successfully reloaded");
+        
+        // After reload, reinject our observers
+        await page.waitForTimeout(2000); // Увеличиваем время ожидания для полной загрузки страницы
+        
+        // Явно восстанавливаем наблюдатель после перезагрузки страницы
+        await injectObserver();
+        
+        // Обязательно очищаем историю просмотренных твитов при обновлении страницы
+        await page.evaluate(() => {
+          console.log("🔄 Resetting processed tweet history after page reload");
+          window.processedTweetIds = new Set();
+          window.seenTweetTexts = new Map();
+        });
+        
+        // Click on Latest tab if needed
+        await page.evaluate(() => {
+          setTimeout(() => {
+            const latestTab = document.querySelector('[role="tab"]:nth-child(2)');
+            if (latestTab) {
+              console.log("🔄 Clicking 'Latest' tab after reload");
+              latestTab.click();
+              
+              // Ещё раз запускаем поиск твитов после явного перехода на вкладку Latest
+              setTimeout(() => {
+                if (typeof window.detectNewTweets === 'function') {
+                  console.log("🔄 Running explicit tweet detection after tab switch");
+                  window.detectNewTweets();
+                }
+              }, 2000);
+            }
+          }, 1000);
+        });
+      } else {
+        // Try to use the refresh button as a fallback
+        const refreshButtonClicked = await page.evaluate(() => {
+          const refreshButton = document.querySelector('[data-testid="refresh"]');
+          if (refreshButton) {
+            console.log("🔄 Clicking refresh button");
+            refreshButton.click();
+            return true;
+          }
+          return false;
+        });
+        
+        if (refreshButtonClicked) {
+          log.info("Refresh button clicked - timeline should update");
+        }
+      }
+    } catch (refreshErr) {
+      log.error("Error refreshing timeline:", refreshErr);
+    }
+    
+    // Scan for tweets after refresh
+    try {
+      await page.evaluate(() => {
+        if (typeof window.detectNewTweets === 'function') {
+          console.log("🔍 Scanning for tweets after refresh");
+          window.detectNewTweets();
+        }
+      });
+    } catch (scanErr) {
+      log.error("Error scanning for tweets:", scanErr);
+    }
+  } catch (err) {
+    log.error("Error during page refresh:", err);
   }
-});
+}
 
 // Setup tweet monitoring in Puppeteer window
 async function setupTweetMonitoring(page) {
@@ -465,629 +559,498 @@ async function setupTweetMonitoring(page) {
       const type = msg.type();
       const text = msg.text();
       
-      switch (type) {
-        case 'error':
-          log.error(`Browser: ${text}`);
-          break;
-        case 'warning':
-          log.warn(`Browser: ${text}`);
-          break;
-        default:
-          log.info(`Browser: ${text}`);
+      // Filter logs related to tweets
+      if (text.includes('tweet') || text.includes('Tweet') || text.includes('📊')) {
+        log.info(`Browser: ${text}`);
+      } else if (type === 'error') {
+        log.error(`Browser: ${text}`);
+      } else if (type === 'warning') {
+        log.warn(`Browser: ${text}`);
+      } else {
+        // Other logs output only in debug mode
+        log.debug(`Browser: ${text}`);
       }
     });
     
-    // Track the last page refresh time
-    let lastRefreshTime = Date.now();
-    let refreshIntervalId = null;
-
-    // Instead of injecting a script element (which is blocked by CSP),
-    // we'll evaluate the code directly using page.evaluate
+    // Variables to track page refresh timing
+    let lastFullReloadTime = Date.now();
+    
+    // Direct mutation observer for Twitter timeline - most reliable method
     async function injectObserver() {
-      log.info("Injecting TwitterPostObserver function through direct evaluation");
+      log.info("INJECTING ADVANCED MUTATION OBSERVER FOR TWITTER");
       
-      // Create the observer directly via evaluate - this bypasses CSP restrictions
-      // on inline scripts because it's executed through the DevTools protocol
+      // This method uses DOM MutationObserver to detect new tweets as they appear in real-time
       const result = await page.evaluate(() => {
         try {
+          console.log("🔍 Setting up Advanced Twitter Observer with MutationObserver");
+          
           // Clean up any previous instances
-          if (window.twitterObserver) {
-            try {
-              window.twitterObserver.stop();
-            } catch (e) {
-              console.error("Error stopping previous observer:", e);
-            }
-            window.twitterObserver = null;
+          if (window.advancedTwitterObserver) {
+            console.log("🧹 Cleaning up previous observer");
+            window.advancedTwitterObserver.disconnect();
+            window.advancedTwitterObserver = null;
           }
-
-          // Define the TwitterPostObserver class in the page context
-          window.TwitterPostObserver = class {
-            constructor(options = {}) {
-              this.options = {
-                postSelector: 'article',
-                contentSelector: '[data-testid="tweetText"]',
-                pollingInterval: 1000,
-                refreshInterval: 30000,
-                ...options
-              };
-              
-              this.knownPostIds = new Set();
-              this.callbacks = {
-                onNewPost: null
-              };
-              this.initialized = false;
-              this.observerInterval = null;
-              this.refreshInterval = null;
-              
-              console.log("TwitterPostObserver created with settings:", JSON.stringify(this.options));
+          
+          // Store processed tweet IDs to avoid duplicates
+          window.processedTweetIds = window.processedTweetIds || new Set();
+          
+          // Create a map of seen tweet content to detect duplicates with different IDs
+          window.seenTweetTexts = window.seenTweetTexts || new Map();
+          
+          // Initialize lastPageRefreshTime if not set
+          window.lastPageRefreshTime = window.lastPageRefreshTime || Date.now();
+          
+          // Direct tweet detection via MutationObserver
+          window.detectNewTweets = function() {
+            console.log("🔎 Actively searching for tweets in the timeline");
+            
+            // More robust selectors to find tweets in any Twitter layout
+            const tweetSelectors = [
+              'article', 
+              '[data-testid="tweet"]', 
+              '[role="article"]', 
+              'div[data-testid^="cellInnerDiv"]',
+              // More specific selectors to catch all possible tweet containers
+              '[data-testid="cellInnerDiv"] > div > div > div > div[data-testid]',
+              // Timeline specific selectors
+              '[aria-label="Timeline: Search timeline"] > div > div > div > div',
+              // Еще более специфичные селекторы для Twitter
+              '[data-testid="tweetText"]',
+              'a[href*="/status/"]',
+              'div[lang]'
+            ];
+            
+            // Join selectors with commas for a single query
+            const allTweetSelector = tweetSelectors.join(', ');
+            const tweetElements = document.querySelectorAll(allTweetSelector);
+            
+            console.log(`📊 Found ${tweetElements.length} potential tweets on page`);
+            let newTweetsCount = 0;
+            
+            // Выводим детальную информацию о элементах на странице для отладки
+            console.log(`🔍 Current page URL: ${window.location.href}`);
+            console.log(`🔍 Current page title: ${document.title}`);
+            
+            // Если твитов нет, давайте проверим структуру страницы
+            if (tweetElements.length === 0) {
+                console.log("🔍 Page structure analysis for debugging:");
+                console.log(`🔍 Articles: ${document.querySelectorAll('article').length}`);
+                console.log(`🔍 Role="article": ${document.querySelectorAll('[role="article"]').length}`);
+                console.log(`🔍 CellInnerDiv: ${document.querySelectorAll('[data-testid^="cellInnerDiv"]').length}`);
+                console.log(`🔍 Status links: ${document.querySelectorAll('a[href*="/status/"]').length}`);
+                
+                // Если мы на странице поиска и не находим твитов, возможно нужно переключиться на вкладку Latest
+                if (window.location.href.includes('twitter.com/search')) {
+                    console.log("🔄 Search page detected without tweets, trying to switch to Latest tab");
+                    const tabs = document.querySelectorAll('[role="tab"]');
+                    if (tabs.length >= 2) {
+                        console.log("🔄 Clicking on 'Latest' tab");
+                        tabs[1].click();
+                        
+                        // После переключения вкладки нужно дать контенту загрузиться
+                        setTimeout(() => {
+                            console.log("🔄 Re-scanning for tweets after switching tab");
+                            window.detectNewTweets();
+                        }, 2000);
+                    }
+                }
             }
             
-            start() {
-              if (!this.initialized) {
-                this.clickLatestTab();
-              }
-              
-              if (this.observerInterval) {
-                this.stop();
-              }
-              
-              this.observerInterval = setInterval(() => {
-                this.checkForNewPosts();
-              }, this.options.pollingInterval);
-              
-              this.refreshInterval = setInterval(() => {
-                this.refreshTimeline();
-              }, this.options.refreshInterval);
-              
-              console.log("Observer started with auto-refresh every", 
-                this.options.refreshInterval / 1000, "seconds");
-              
-              return this;
-            }
-            
-            clickLatestTab() {
+            tweetElements.forEach(tweetElement => {
               try {
-                console.log("Attempting to switch to 'Latest' tab...");
+                // First, try to get the official Twitter ID (most reliable)
+                let tweetId = null;
+                let statusLink = tweetElement.querySelector('a[href*="/status/"]');
                 
-                const latestTabSelector = [
-                  'a[href*="f=live"]', 
-                  '[role="tab"][data-testid*="latest"]',
-                  '[role="tab"]:nth-child(2)',
-                  '[data-testid="ScrollSnap-List"] > div:nth-child(2)',
-                  'nav > div > div > a:nth-child(2)'
-                ].join(', ');
-                
-                const latestTab = document.querySelector(latestTabSelector);
-                
-                if (latestTab) {
-                  console.log("Found 'Latest' tab, clicking");
-                  latestTab.click();
-                  this.initialized = true;
-                } else {
-                  console.log("Can't find 'Latest' tab, trying alternative methods");
-                  const tabs = document.querySelectorAll('[role="tab"]');
-                  console.log(`Found ${tabs.length} potential tabs`);
-                  if (tabs.length >= 2) {
-                    console.log("Clicking on second tab, which is likely 'Latest'");
-                    tabs[1].click();
-                    this.initialized = true;
+                if (statusLink) {
+                  const href = statusLink.getAttribute('href');
+                  const match = href.match(/\/status\/(\d+)/);
+                  if (match && match[1]) {
+                    tweetId = `tweet_${match[1]}`;
                   }
                 }
-              } catch (error) {
-                console.error("Error switching to 'Latest' tab:", error);
-              }
-            }
-            
-            refreshTimeline() {
-              try {
-                console.log("Refreshing Twitter timeline...");
                 
-                const refreshButton = document.querySelector('[data-testid="refresh"]');
-                if (refreshButton) {
-                  console.log("Found refresh button, clicking");
-                  refreshButton.click();
+                // If we can't find an ID, skip this element
+                if (!tweetId) {
                   return;
                 }
                 
-                console.log("Refresh button not found, switching between tabs");
+                // Skip if we've already processed this tweet
+                if (window.processedTweetIds.has(tweetId)) {
+                  return;
+                }
                 
-                const tabs = document.querySelectorAll('[role="tab"]');
-                if (tabs.length >= 2) {
-                  console.log("Clicking first tab ('For you')");
-                  tabs[0].click();
+                // Get tweet text
+                let tweetText = '';
+                const tweetTextElement = tweetElement.querySelector('[data-testid="tweetText"]');
+                if (tweetTextElement) {
+                  tweetText = tweetTextElement.textContent.trim();
+                } else {
+                  // Try alternative ways to get text
+                  const langElements = tweetElement.querySelectorAll('[lang]');
+                  for (const el of langElements) {
+                    const text = el.textContent.trim();
+                    if (text.length > tweetText.length) {
+                      tweetText = text;
+                    }
+                  }
                   
-                  setTimeout(() => {
-                    console.log("Returning to 'Latest' tab");
-                    tabs[1].click();
-                  }, 1000);
+                  // If still no text, get the main content
+                  if (!tweetText) {
+                    const allDivs = Array.from(tweetElement.querySelectorAll('div'))
+                      .filter(div => div.children.length && div.textContent.length > 20);
+                      
+                    if (allDivs.length) {
+                      // Sort by text length to find the main content
+                      allDivs.sort((a, b) => b.textContent.length - a.textContent.length);
+                      tweetText = allDivs[0].textContent.trim();
+                    }
+                  }
                 }
-              } catch (error) {
-                console.error("Error refreshing timeline:", error);
-              }
-            }
-            
-            stop() {
-              if (this.observerInterval) {
-                clearInterval(this.observerInterval);
-                this.observerInterval = null;
-                console.log("Stopped tweet checking interval");
-              }
-              
-              if (this.refreshInterval) {
-                clearInterval(this.refreshInterval);
-                this.refreshInterval = null;
-                console.log("Stopped timeline refresh interval");
-              }
-              
-              return this;
-            }
-            
-            onNewPost(callback) {
-              if (typeof callback === 'function') {
-                this.callbacks.onNewPost = callback;
-                console.log("Registered new tweet handler");
-              }
-              
-              return this;
-            }
-            
-            checkForNewPosts() {
-              const posts = document.querySelectorAll(this.options.postSelector);
-              
-              if (posts.length > 0) {
-                console.log(`Found ${posts.length} tweets in feed`);
-              } else {
-                console.log("No tweets found, check selector: " + this.options.postSelector);
-              }
-              
-              let newPostsCount = 0;
-              
-              posts.forEach(post => {
-                const postId = this.getPostId(post);
                 
-                if (!postId || this.knownPostIds.has(postId)) {
+                // Skip tweets with no text
+                if (!tweetText) {
                   return;
                 }
                 
-                this.knownPostIds.add(postId);
-                newPostsCount++;
+                // Use content fingerprinting to detect duplicates
+                const fingerprint = tweetText.substring(0, 50).toLowerCase();
+                if (window.seenTweetTexts.has(fingerprint)) {
+                  console.log(`⚠️ Skipping duplicate tweet content: ${fingerprint.substring(0, 20)}...`);
+                  return;
+                }
                 
-                const content = this.getPostContent(post);
-                const timestamp = this.getPostTimestamp(post);
-                const author = this.getPostAuthor(post);
+                // Get author
+                let author = "Unknown Author";
+                const nameElement = tweetElement.querySelector('[data-testid="User-Name"]');
+                if (nameElement) {
+                  const nameLink = nameElement.querySelector('a[role="link"]');
+                  if (nameLink) {
+                    author = nameLink.textContent.trim();
+                  }
+                }
                 
-                console.log(`NEW TWEET: ${postId.substring(0, 10)}... - ${content.substring(0, 30)}...`);
+                // Get timestamp
+                let timestamp = Date.now();
+                const timeElement = tweetElement.querySelector('time');
+                if (timeElement && timeElement.getAttribute('datetime')) {
+                  timestamp = new Date(timeElement.getAttribute('datetime')).getTime();
+                }
                 
-                this.processPost({
-                  id: postId,
-                  text: content,
-                  timestamp: timestamp,
-                  author: author
-                });
+                // Mark as processed
+                window.processedTweetIds.add(tweetId);
+                window.seenTweetTexts.set(fingerprint, tweetId);
+                
+                // Limit the size of our sets to prevent memory issues
+                if (window.processedTweetIds.size > 5000) {
+                  // Convert to array, remove oldest entries
+                  const idsArray = Array.from(window.processedTweetIds);
+                  window.processedTweetIds = new Set(idsArray.slice(-2500));
+                  console.log(`♻️ Cleaned tweet ID cache: ${idsArray.length} -> ${window.processedTweetIds.size}`);
+                }
+                
+                if (window.seenTweetTexts.size > 1000) {
+                  // Keep only the most recent 500 entries
+                  const entries = Array.from(window.seenTweetTexts.entries());
+                  window.seenTweetTexts = new Map(entries.slice(-500));
+                }
+                
+                // Create tweet data
+                const tweetData = {
+                  id: tweetId,
+                  text: tweetText,
+                  author: author,
+                  timestamp: timestamp
+                };
+                
+                // Add visual highlight to show we detected this tweet
+                tweetElement.style.border = '2px solid #1DA1F2';
+                tweetElement.style.boxShadow = '0 0 5px rgba(29, 161, 242, 0.7)';
+                tweetElement.style.transition = 'all 0.5s ease';
+                
+                setTimeout(() => {
+                  tweetElement.style.border = '';
+                  tweetElement.style.boxShadow = '';
+                }, 5000);
+                
+                // Send tweet data to main process using all available methods
+                console.log(`🔔 NEW TWEET DETECTED: ${tweetId} - ${tweetText.substring(0, 30)}...`);
+                
+                // Method 1: Window postMessage
+                window.postMessage({
+                  type: 'post-detected',
+                  postData: tweetData
+                }, '*');
+                
+                // Method 2: Direct API call if available
+                if (window.electronAPI && typeof window.electronAPI.sendTweet === 'function') {
+                  window.electronAPI.sendTweet(tweetData);
+                }
+                
+                // Method 3: Custom global function
+                if (typeof window.sendPostToMain === 'function') {
+                  window.sendPostToMain(tweetData);
+                }
+                
+                // Store for debugging
+                window.lastDetectedTweet = tweetData;
+                
+                // Keep track of tweets found in this scan
+                newTweetsCount++;
+              } catch (err) {
+                console.error("❌ Error processing tweet element:", err);
+              }
+            });
+            
+            if (newTweetsCount > 0) {
+              console.log(`🎉 Detected ${newTweetsCount} new tweets in this scan!`);
+              
+              // Show visual feedback for tweet detection
+              const notification = document.createElement('div');
+              Object.assign(notification.style, {
+                position: 'fixed',
+                bottom: '20px',
+                left: '20px',
+                backgroundColor: '#1DA1F2',
+                color: 'white',
+                padding: '10px 20px',
+                borderRadius: '30px',
+                zIndex: '9999',
+                fontWeight: 'bold',
+                boxShadow: '0 0 10px rgba(0, 0, 0, 0.5)',
+                animation: 'fadeInOut 3s forwards'
               });
               
-              if (newPostsCount > 0) {
-                console.log(`Detected ${newPostsCount} new tweets!`);
-              }
+              notification.textContent = `🎉 Найдено ${newTweetsCount} новых твитов!`;
+              document.body.appendChild(notification);
               
-              if (Math.random() < 0.1) {
-                this.cleanupOldPosts();
-              }
-            }
-            
-            getPostId(postElement) {
-              try {
-                // Method 1: Look for Twitter's official tweet ID in the article
-                const officialIdContainer = postElement.querySelector('a[href*="/status/"]');
-                if (officialIdContainer) {
-                  const hrefMatch = officialIdContainer.getAttribute('href').match(/\/status\/(\d+)/);
-                  if (hrefMatch && hrefMatch[1]) {
-                    return `tweet_${hrefMatch[1]}`;
-                  }
+              // Add animation
+              const style = document.createElement('style');
+              style.textContent = `
+                @keyframes fadeInOut {
+                  0% { opacity: 0; transform: translateY(20px); }
+                  20% { opacity: 1; transform: translateY(0); }
+                  80% { opacity: 1; transform: translateY(0); }
+                  100% { opacity: 0; transform: translateY(-20px); }
                 }
-                
-                // Method 2: Try to find data attribute that might contain a unique ID
-                const idAttr = postElement.getAttribute('data-testid') || 
-                              postElement.getAttribute('data-tweet-id') ||
-                              postElement.getAttribute('aria-labelledby');
-                
-                if (idAttr) return `attr_${idAttr}`;
-                
-                // Method 3: Create a hash from content and timestamp
-                const timeElement = postElement.querySelector('time');
-                const timeStamp = timeElement ? timeElement.getAttribute('datetime') : '';
-                
-                // Get the text content and create a short hash from combination of timestamp and content
-                const contentEl = postElement.querySelector(this.options.contentSelector);
-                const contentText = contentEl ? contentEl.textContent.trim().substring(0, 40) : '';
-                const textHash = contentText.replace(/\s+/g, '_').substring(0, 20);
-                
-                // If we have a timestamp and content, create a combined ID
-                if (timeStamp && contentText) {
-                  return `tweet_${timeStamp}_${textHash}`;
-                }
-                
-                // Fallback to simple timestamp-based ID
-                const randomId = Date.now() + '_' + Math.random().toString(36).substring(2, 8);
-                return `post_${randomId}`;
-              } catch (e) {
-                console.error("Error getting post ID:", e);
-                return `post_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-              }
-            }
-            
-            getPostContent(postElement) {
-              try {
-                // Метод 1: Проверяем основной селектор для контента твита
-                const contentEl = postElement.querySelector(this.options.contentSelector);
-                
-                if (contentEl) {
-                  return contentEl.textContent.trim();
-                }
-                
-                // Метод 2: Пытаемся найти текст твита через дополнительные селекторы
-                const alternativeSelectors = [
-                  '[data-testid="tweetText"]',
-                  '[lang]',
-                  'div[dir="auto"]',
-                  '[role="article"] div[lang]'
-                ];
-                
-                for (const selector of alternativeSelectors) {
-                  const element = postElement.querySelector(selector);
-                  if (element && element.textContent.trim()) {
-                    return element.textContent.trim();
-                  }
-                }
-                
-                // Метод 3: Извлекаем весь текстовый контент элемента, исключая некоторые части
-                // Выбираем только основной текстовый контент, исключая метаданные
-                const text = Array.from(postElement.querySelectorAll('div'))
-                  .filter(div => div.textContent.trim().length > 15 && 
-                                !div.querySelector('time') && 
-                                !div.querySelector('a[href*="/status/"]'))
-                  .map(div => div.textContent.trim())
-                  .sort((a, b) => b.length - a.length)[0];
-                
-                if (text) {
-                  return text;
-                }
-                
-                // Последний вариант: берем весь текст элемента
-                return postElement.textContent.trim();
-              } catch (e) {
-                console.error("Error getting tweet text:", e);
-                return 'Tweet with no text';
-              }
-            }
-            
-            getPostAuthor(postElement) {
-              try {
-                // Try to find the username through various selectors
-                const authorElement = postElement.querySelector('[data-testid="User-Name"] a[role="link"]');
-                if (authorElement) {
-                  return authorElement.textContent.trim();
-                }
-                
-                // Fallback selectors
-                const timeParent = postElement.querySelector('time')?.closest('div');
-                if (timeParent) {
-                  const authorNearTime = timeParent.querySelector('a[role="link"]');
-                  if (authorNearTime) {
-                    return authorNearTime.textContent.trim();
-                  }
-                }
-                
-                return 'Unknown Author';
-              } catch (e) {
-                console.error("Error getting tweet author:", e);
-                return 'Unknown Author';
-              }
-            }
-            
-            getPostTimestamp(postElement) {
-              try {
-                const timeElement = postElement.querySelector('time');
-                if (timeElement && timeElement.getAttribute('datetime')) {
-                  return new Date(timeElement.getAttribute('datetime')).getTime();
-                }
-                
-                return Date.now();
-              } catch (e) {
-                console.error("Error getting tweet timestamp:", e);
-                return Date.now();
-              }
-            }
-            
-            processPost(postData) {
-              if (this.callbacks.onNewPost) {
-                this.callbacks.onNewPost(postData);
-              }
-            }
-            
-            cleanupOldPosts(maxPosts = 1000) {
-              if (this.knownPostIds.size > maxPosts) {
-                const oldSize = this.knownPostIds.size;
-                const postIdsArray = Array.from(this.knownPostIds);
-                const newPostIds = postIdsArray.slice(postIdsArray.length - maxPosts);
-                this.knownPostIds = new Set(newPostIds);
-                console.log(`Cleaned tweet ID cache: ${oldSize} -> ${this.knownPostIds.size}`);
-              }
-            }
-          };
-          
-          // Define the sendPostToMain function
-          window.sendPostToMain = function(postData) {
-            try {
-              console.log(`Sending tweet to main process: ${postData.text ? postData.text.substring(0, 30) + "..." : "No text"}`);
-              console.log(`Tweet ID: ${postData.id}, Author: ${postData.author}`);
-              
-              // Make sure we have all required data before sending
-              const safePostData = {
-                id: postData.id || `fallback_id_${Date.now()}`,
-                text: postData.text || "No content available",
-                timestamp: postData.timestamp || Date.now(),
-                author: postData.author || "Unknown Author"
-              };
-              
-              // ПРОБУЕМ ПРЯМОЙ ВЫЗОВ ГЛОБАЛЬНОЙ ФУНКЦИИ
-              // Это добавит дополнительный способ передачи данных
-              try {
-                console.log("Attempting to use window.electronAPI.sendTweet directly");
-                if (typeof window.electronAPI !== 'undefined' && typeof window.electronAPI.sendTweet === 'function') {
-                  window.electronAPI.sendTweet(safePostData);
-                  console.log("Successfully called window.electronAPI.sendTweet");
-                } else {
-                  console.log("window.electronAPI.sendTweet not available, using window.postMessage");
-                }
-              } catch (apiErr) {
-                console.error("Error using direct electronAPI:", apiErr);
-              }
-              
-              // ОСНОВНОЙ СПОСОБ - ЧЕРЕЗ WINDOW.POSTMESSAGE
-              console.log("Using window.postMessage to send tweet data");
-              window.postMessage({
-                type: 'post-detected',
-                postData: safePostData
-              }, '*');
-              
-              // УСТАНАВЛИВАЕМ ГЛОБАЛЬНУЮ ПЕРЕМЕННУЮ С ПОСЛЕДНИМ ТВИТОМ
-              // Это поможет диагностировать проблему
-              window.lastDetectedTweet = safePostData;
-              
-              // Визуальная обратная связь
-              const indicator = document.createElement('div');
-              indicator.style.position = 'fixed';
-              indicator.style.bottom = '10px';
-              indicator.style.right = '10px';
-              indicator.style.backgroundColor = 'green';
-              indicator.style.color = 'white';
-              indicator.style.padding = '5px 10px';
-              indicator.style.borderRadius = '5px';
-              indicator.style.zIndex = '9999';
-              indicator.style.opacity = '0.8';
-              indicator.style.fontWeight = 'bold';
-              indicator.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.5)';
-              indicator.textContent = `Tweet detected: ${safePostData.author}`;
-              document.body.appendChild(indicator);
+              `;
+              document.head.appendChild(style);
               
               setTimeout(() => {
-                indicator.style.transition = 'opacity 1s';
-                indicator.style.opacity = '0';
-                setTimeout(() => indicator.remove(), 1000);
-              }, 2000);
+                notification.remove();
+                style.remove();
+              }, 3000);
+            }
+            
+            return newTweetsCount;
+          };
+          
+          // Timeline refresh function (for browser context)
+          window.refreshTwitterTimeline = function() {
+            console.log("🔄 Page refresh initiated (17 second interval)");
+            
+            try {
+              // Method 1: Try to find and click refresh button first
+              const refreshButton = document.querySelector('[data-testid="refresh"]');
+              if (refreshButton) {
+                console.log("🔄 Found refresh button, clicking");
+                refreshButton.click();
+                
+                // After refresh, check for tweets
+                setTimeout(() => {
+                  window.detectNewTweets();
+                }, 500);
+                return true;
+              }
+              
+              // Method 2: Request a full page reload from the main process
+              console.log("🔄 No refresh button found, requesting full page reload");
+              
+              // Use a custom event to signal that we want a page reload
+              window.postMessage({
+                type: 'request-page-reload',
+                timestamp: Date.now()
+              }, '*');
               
               return true;
-            } catch (error) {
-              console.error("Error in sendPostToMain:", error);
+            } catch (err) {
+              console.error("❌ Error refreshing timeline:", err);
               return false;
             }
           };
           
-          console.log("TwitterPostObserver class defined directly in page context");
+          // Advanced timeline scrolling
+          window.smartScrollTimeline = function() {
+            console.log("📜 Smart timeline scrolling initiated");
+            
+            const maxScrollIterations = 3;
+            let scrollCount = 0;
+            
+            const performScroll = () => {
+              if (scrollCount >= maxScrollIterations) {
+                // After finishing all scrolls, detect tweets once more
+                window.detectNewTweets();
+                return;
+              }
+              
+              // Get current scroll position
+              const beforeScrollY = window.scrollY;
+              
+              // Scroll down by a significant amount
+              window.scrollBy(0, 1000);
+              scrollCount++;
+              
+              // After a short delay, check if the scroll was effective
+              setTimeout(() => {
+                const afterScrollY = window.scrollY;
+                const scrollDifference = afterScrollY - beforeScrollY;
+                
+                console.log(`📜 Scroll attempt ${scrollCount}/${maxScrollIterations}: moved ${scrollDifference}px`);
+                
+                // If we couldn't scroll much, we may be at the bottom
+                if (scrollDifference < 100 && scrollCount < maxScrollIterations) {
+                  console.log("📜 Reached apparent bottom, refreshing timeline");
+                  window.refreshTwitterTimeline();
+                  return;
+                }
+                
+                // Check for new tweets after each scroll
+                window.detectNewTweets();
+                
+                // Continue scrolling after a short delay
+                setTimeout(performScroll, 800);
+              }, 500);
+            };
+            
+            // Start the scrolling process
+            performScroll();
+          };
+          
+          // Set up the main MutationObserver
+          window.advancedTwitterObserver = new MutationObserver((mutations) => {
+            // Check if any of the mutations add nodes that might be tweets
+            const hasPotentialTweets = mutations.some(mutation => {
+              return mutation.type === 'childList' && 
+                     mutation.addedNodes.length > 0 &&
+                     Array.from(mutation.addedNodes).some(node => {
+                       // Only process Element nodes
+                       return node.nodeType === 1 && (
+                         // Check for potential tweet indicators
+                         node.querySelector('article') ||
+                         node.querySelector('[data-testid="tweet"]') ||
+                         node.querySelector('[data-testid="tweetText"]') ||
+                         node.matches('[data-testid="cellInnerDiv"]') ||
+                         node.querySelector('time')
+                       );
+                     });
+            });
+            
+            if (hasPotentialTweets) {
+              console.log("👀 MutationObserver detected potential new tweets");
+              window.detectNewTweets();
+            }
+          });
+          
+          // Start observing with a comprehensive configuration
+          window.advancedTwitterObserver.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: false,
+            characterData: false
+          });
+          
+          console.log("✅ Advanced Twitter Observer with MutationObserver is active");
+          
+          // Initial detection and setup
+          setTimeout(() => {
+            // Initial tweet detection
+            window.detectNewTweets();
+            
+            // Make sure we're on the Latest tab
+            const ensureLatestTab = () => {
+              const tabs = document.querySelectorAll('[role="tab"]');
+              if (tabs.length >= 2) {
+                console.log("🔄 Initial switch to Latest tab");
+                tabs[1].click();
+                
+                // After switching to Latest, scan for tweets
+                setTimeout(window.detectNewTweets, 500);
+              }
+            };
+            
+            ensureLatestTab();
+            
+            // Set up periodic refreshes - every 17 seconds to avoid timeouts
+            setInterval(window.refreshTwitterTimeline, 17000); // Refresh every 17 seconds
+            setInterval(window.smartScrollTimeline, 60000);   // Smart scroll every 60 seconds
+            setInterval(window.detectNewTweets, 5000);        // Regular scans every 5 seconds
+            
+            // Initial smart scroll
+            setTimeout(window.smartScrollTimeline, 2000);
+          }, 1000);
+          
           return true;
         } catch (error) {
-          console.error("Error creating TwitterPostObserver:", error);
+          console.error("❌ Error setting up Advanced Twitter Observer:", error);
           return false;
         }
       });
-
+      
       if (!result) {
-        log.error("Failed to inject TwitterPostObserver through direct evaluation");
+        log.error("Failed to inject Advanced Twitter Observer");
         return false;
       }
-
-      log.info("TwitterPostObserver successfully injected through direct evaluation");
+      
+      log.info("Advanced Twitter Observer successfully injected");
       return true;
     }
 
-    // Initialize the observer instance
-    async function initializeObserver() {
-      const result = await page.evaluate(() => {
-        try {
-          // Check if TwitterPostObserver is available
-          if (typeof window.TwitterPostObserver !== 'function') {
-            console.error("TwitterPostObserver class not found in window scope!");
-            return false;
+    // Expose a function to receive post data from the page, но только если она еще не зарегистрирована
+    try {
+      // Проверяем, существует ли уже эта функция в контексте страницы
+      const functionExists = await page.evaluate(() => {
+        return typeof window.sendPostToMain === 'function';
+      }).catch(() => false);
+
+      if (!functionExists) {
+        await page.exposeFunction('sendPostToMain', (postData) => {
+          log.info("NEW TWEET RECEIVED: " + (postData.text ? postData.text.substring(0, 50) + "..." : "No text"));
+          
+          // Make sure data has the right format
+          const sanitizedPostData = {
+            id: postData.id || `tweet_${Date.now()}_${Math.random().toString(36).substring(2,8)}`,
+            text: postData.text || 'No content',
+            timestamp: postData.timestamp || Date.now(),
+            author: postData.author || 'Unknown Author'
+          };
+          
+          // Forward the post to the renderer process
+          if (monitoringWindow) {
+            log.info(`Forwarding tweet to monitoring window: ${sanitizedPostData.id}`);
+            monitoringWindow.webContents.send('post-data', sanitizedPostData);
+          } else {
+            log.error("Monitoring window not available, can't forward tweet data");
           }
-          
-          // Create a new instance
-          window.twitterObserver = new window.TwitterPostObserver({
-            postSelector: 'article, [data-testid="tweet"], [role="article"], div[data-testid^="cellInnerDiv"]',
-            contentSelector: '[data-testid="tweetText"], [lang]',
-            pollingInterval: 300,
-            refreshInterval: 30000
-          });
-          
-          // Register the callback
-          window.twitterObserver.onNewPost((postData) => {
-            console.log("Found new tweet, sending to main process");
-            window.sendPostToMain(postData);
-          });
-          
-          // Start the observer
-          window.twitterObserver.start();
-          
-          console.log("TwitterPostObserver initialized and running");
-          return true;
-        } catch (error) {
-          console.error("Error initializing TwitterPostObserver:", error);
-          return false;
-        }
-      });
-
-      if (!result) {
-        log.error("Failed to initialize TwitterPostObserver");
-        return false;
-      }
-
-      log.info("TwitterPostObserver successfully initialized");
-      return true;
-    }
-
-    // Expose a function to receive post data from the page
-    await page.exposeFunction('sendPostToMain', (postData) => {
-      log.info("NEW TWEET RECEIVED: " + (postData.text ? postData.text.substring(0, 50) + "..." : "No text"));
-      
-      // Убедимся, что данные имеют правильный формат
-      const sanitizedPostData = {
-        id: postData.id || `tweet_${Date.now()}_${Math.random().toString(36).substring(2,8)}`,
-        text: postData.text || 'No content',
-        timestamp: postData.timestamp || Date.now(),
-        author: postData.author || 'Unknown Author'
-      };
-      
-      // Forward the post to the renderer process
-      if (monitoringWindow) {
-        log.info(`Forwarding tweet to monitoring window: ${sanitizedPostData.id}`);
-        monitoringWindow.webContents.send('post-data', sanitizedPostData);
+        });
+        log.info("Successfully registered sendPostToMain function");
       } else {
-        log.error("Monitoring window not available, can't forward tweet data");
+        log.info("sendPostToMain function already exists, skipping registration");
       }
-    });
+    } catch (exposeFunctionError) {
+      log.error("Error while exposing sendPostToMain function:", exposeFunctionError);
+      // Продолжаем выполнение, так как основная функциональность может работать и без этого
+    }
 
     // Initial injection and initialization
     await injectObserver();
-    await initializeObserver();
     
-    // Set up function to refresh page every second
-    const refreshPage = async () => {
-      try {
-        // Current time
-        const now = new Date();
-        const timeStr = now.toTimeString().substring(0, 8);
-        log.info(`Refreshing Twitter page [${timeStr}]`);
-        
-        // Check if the TwitterPostObserver is still there
-        const observerExists = await page.evaluate(() => {
-          return typeof window.TwitterPostObserver === 'function' && 
-                 typeof window.twitterObserver !== 'undefined';
-        });
-        
-        if (!observerExists) {
-          log.error("TwitterPostObserver lost from page context - reinjecting");
-          await injectObserver();
-          await initializeObserver();
-        }
-        
-        // ПРОБУЕМ ПОЛУЧИТЬ ТВИТЫ НАПРЯМУЮ ИЗ СТРАНИЦЫ
-        try {
-          const lastTweet = await page.evaluate(() => {
-            return window.lastDetectedTweet;
-          });
-          
-          if (lastTweet && lastTweet.id) {
-            log.info(`Direct tweet access - Last tweet ID: ${lastTweet.id}`);
-            log.info(`Direct tweet access - Author: ${lastTweet.author}, Text: ${lastTweet.text ? lastTweet.text.substring(0, 30) + "..." : "No text"}`);
-            
-            // Если окно мониторинга существует, отправляем твит напрямую
-            if (monitoringWindow) {
-              monitoringWindow.webContents.send('post-data', lastTweet);
-              log.info(`Direct tweet access - Sent to monitoring window: ${lastTweet.id}`);
-            }
-          }
-        } catch (directErr) {
-          log.error("Error in direct tweet access:", directErr);
-        }
-        
-        // Try to toggle tabs which is faster than a full page refresh
-        const tabsToggled = await page.evaluate(() => {
-          const tabs = document.querySelectorAll('[role="tab"]');
-          if (tabs.length >= 2) {
-            tabs[0].click();
-            setTimeout(() => tabs[1].click(), 300);
-            return true;
-          }
-          return false;
-        });
-        
-        if (tabsToggled) {
-          log.info("Tab switching completed");
-        } else {
-          // Try to click the refresh button
-          const refreshButtonExists = await page.evaluate(() => {
-            const refreshButton = document.querySelector('[data-testid="refresh"]');
-            if (refreshButton) {
-              refreshButton.click();
-              return true;
-            }
-            return false;
-          });
-          
-          if (refreshButtonExists) {
-            log.info("Refresh button clicked");
-          } else {
-            // If no refresh options available, do a full page reload less frequently
-            const now = Date.now();
-            if (now - lastRefreshTime > 5000) {
-              log.info("Performing full page reload");
-              await page.reload({ waitUntil: 'networkidle2' });
-              
-              // After reload we need to reinject our observer
-              await page.waitForTimeout(1000);
-              await injectObserver();
-              await initializeObserver();
-              
-              // Click Latest tab
-              await page.evaluate(() => {
-                const latestTab = document.querySelector('[role="tab"]:nth-child(2)');
-                if (latestTab) latestTab.click();
-              });
-              
-              lastRefreshTime = now;
-            } else {
-              log.info("Full reload delayed (too frequent requests)");
-            }
-          }
-        }
-        
-        // Force check for new tweets
-        await page.evaluate(() => {
-          if (window.twitterObserver) {
-            window.twitterObserver.checkForNewPosts();
-          } else {
-            console.error("TwitterPostObserver not found in page context!");
-          }
-        });
-        
-      } catch (err) {
-        log.error("Error refreshing page:", err);
-      }
-    };
+    // Start the refresh interval
+    if (refreshIntervalId) {
+      clearInterval(refreshIntervalId);
+    }
+    refreshIntervalId = setInterval(refreshPage, 17000);
     
-    // Set up page refresh interval - checking every 3 seconds
-    refreshIntervalId = setInterval(refreshPage, 3000);
-    
-    // Cleanup on page close
-    page.on('close', () => {
-      if (refreshIntervalId) {
-        clearInterval(refreshIntervalId);
-        refreshIntervalId = null;
-        log.info("Refresh interval cleared due to page close");
-      }
-    });
-    
-    log.info("TWEET MONITORING CONFIGURED - UPDATING EVERY SECOND");
+    log.info("TWEET MONITORING CONFIGURED - UPDATING EVERY 17 SECONDS");
     return true;
   } catch (error) {
     log.error("ERROR SETTING UP MONITORING:", error);

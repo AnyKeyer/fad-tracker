@@ -2,12 +2,13 @@
 class TwitterPostObserver {
   constructor(options = {}) {
     this.options = {
-      postSelector: 'article', // Twitter posts are wrapped in article tags
-      contentSelector: '[data-testid="tweetText"]', // Tweet content selector
-      pollingInterval: 1000, // Check for new posts every second
-      refreshInterval: 30000, // Refresh the timeline every 30 seconds
+      postSelector: 'article, [data-testid="tweet"], [role="article"], div[data-testid^="cellInnerDiv"]', // Расширенный селектор для твитов
+      contentSelector: '[data-testid="tweetText"], [lang]', // Расширенный селектор для контента
+      pollingInterval: 1000, // Увеличиваем интервал проверки до 1 секунды для стабильности
+      refreshInterval: 30000, // Оставляем стандартный интервал обновления 30 секунд
       askContinue: false, // Whether to ask before continuing iterations
       askContinueInterval: 300000, // Ask every 5 minutes by default
+      maxTweetsPerCheck: 50, // Максимальное количество обрабатываемых твитов за одну проверку
       ...options
     };
     
@@ -88,77 +89,221 @@ class TwitterPostObserver {
   async clickLatestTab() {
     try {
       console.log("📊 Attempting to switch to 'Latest' tab...");
-      // Wait for a moment to make sure the page is loaded
-      setTimeout(() => {
-        // Find and click the "Latest" tab
-        const latestTabSelector = [
-          'a[href*="f=live"]', 
-          '[role="tab"][data-testid*="latest"]',
-          '[role="tab"]:nth-child(2)',
-          '[data-testid="ScrollSnap-List"] > div:nth-child(2)',
-          'nav > div > div > a:nth-child(2)'
-        ].join(', ');
+      
+      // Найти и кликнуть на вкладку "Latest"
+      const latestTabSelector = [
+        'a[href*="f=live"]', 
+        '[role="tab"][data-testid*="latest"]',
+        '[role="tab"]:nth-child(2)',
+        '[data-testid="ScrollSnap-List"] > div:nth-child(2)',
+        'nav > div > div > a:nth-child(2)'
+      ].join(', ');
+      
+      const latestTab = document.querySelector(latestTabSelector);
+      
+      if (latestTab) {
+        console.log("📊 Found 'Latest' tab, clicking with STRICT 17-second delay");
+        latestTab.click();
         
-        const latestTab = document.querySelector(latestTabSelector);
-        
-        if (latestTab) {
-          console.log("📊 Found 'Latest' tab, clicking");
-          latestTab.click();
+        // ВАЖНО: Отложить обработку после клика на СТРОГО 17 секунд
+        setTimeout(() => {
+          console.log("📊 Tab clicked, initializing after strict 17-second delay");
           this.initialized = true;
-        } else {
-          console.log("📊 Can't find 'Latest' tab, trying alternative methods");
-          // Try to find top tab elements for inspection
-          const tabs = document.querySelectorAll('[role="tab"]');
-          console.log(`📊 Found ${tabs.length} potential tabs`);
-          if (tabs.length >= 2) {
-            console.log("📊 Clicking on second tab, which is likely 'Latest'");
-            tabs[1].click();
+          
+          // Выполняем проверку сразу после инициализации
+          this.scheduleDelayedChecks();
+        }, 17000); // СТРОГАЯ задержка 17 секунд для инициализации
+      } else {
+        console.log("📊 Can't find 'Latest' tab, trying alternative methods");
+        // Try to find top tab elements for inspection
+        const tabs = document.querySelectorAll('[role="tab"]');
+        console.log(`📊 Found ${tabs.length} potential tabs`);
+        if (tabs.length >= 2) {
+          console.log("📊 Clicking on second tab, which is likely 'Latest'");
+          tabs[1].click();
+          
+          // ВАЖНО: Отложить обработку после клика на СТРОГО 17 секунд
+          setTimeout(() => {
+            console.log("📊 Tab clicked, initializing after strict 17-second delay");
             this.initialized = true;
-          }
+            
+            // Выполняем проверку сразу после инициализации
+            this.scheduleDelayedChecks();
+          }, 17000); // СТРОГАЯ задержка 17 секунд для инициализации
         }
-      }, 3000);
+      }
     } catch (error) {
       console.error("❌ Error switching to 'Latest' tab:", error);
+    }
+  }
+  
+  // Новый, более безопасный метод для запуска проверок со СТРОГИМ интервалом в 17 секунд
+  scheduleDelayedChecks() {
+    // Очищаем множество известных ID перед проверками
+    this.knownPostIds.clear();
+    
+    console.log("📊 Starting tweet checks with STRICT 17-second intervals");
+    
+    // Единственная проверка после СТРОГОГО интервала в 17 секунд
+    setTimeout(() => {
+      console.log("📊 Running tweet check after STRICT 17-second delay");
+      this.checkForNewPosts();
+      
+      // После проверки твитов ждем еще 17 секунд и выполняем прокрутку ленты
+      setTimeout(() => {
+        console.log("📊 Performing timeline scroll after STRICT 17-second delay");
+        this.scrollTimeline();
+        
+        // После прокрутки ждем еще 17 секунд и выполняем финальную проверку
+        setTimeout(() => {
+          console.log("📊 Running final tweet check after STRICT 17-second delay");
+          this.knownPostIds.clear();
+          this.checkForNewPosts();
+          
+          // Завершающее сообщение
+          console.log("📊 Initial tweet scanning complete with STRICT 17-second intervals");
+        }, 17000); // СТРОГАЯ задержка 17 секунд перед финальной проверкой
+      }, 17000); // СТРОГАЯ задержка 17 секунд перед прокруткой
+    }, 17000); // СТРОГАЯ задержка 17 секунд перед первой проверкой
+  }
+  
+  // Новый метод - запланировать несколько последовательных проверок твитов со СТРОГИМ интервалом в 17 секунд
+  scheduleMultipleChecks() {
+    // Очищаем множество известных ID перед проверками
+    this.knownPostIds.clear();
+    
+    console.log("📊 Starting tweet checks with STRICT 17-second intervals");
+    
+    // Первая проверка через СТРОГО 17 секунд
+    setTimeout(() => {
+      console.log("📊 Running initial tweet check after STRICT 17-second delay");
+      this.checkForNewPosts();
+      
+      // Прокрутка ленты через СТРОГО 17 секунд после первой проверки
+      setTimeout(() => {
+        console.log("📊 Performing timeline scroll after STRICT 17-second delay");
+        this.scrollTimeline();
+        
+        // Вторая проверка через СТРОГО 17 секунд после прокрутки
+        setTimeout(() => {
+          console.log("📊 Running second tweet check after STRICT 17-second delay");
+          this.knownPostIds.clear();
+          this.checkForNewPosts();
+          
+          // Вторая прокрутка через СТРОГО 17 секунд
+          setTimeout(() => {
+            console.log("📊 Performing second timeline scroll after STRICT 17-second delay");
+            this.scrollTimeline();
+            
+            // Финальная проверка через СТРОГО 17 секунд
+            setTimeout(() => {
+              console.log("📊 Running final tweet check after STRICT 17-second delay");
+              this.knownPostIds.clear();
+              this.checkForNewPosts();
+              
+              // Завершающее сообщение
+              console.log("📊 Initial tweet scanning complete with STRICT 17-second intervals");
+            }, 17000); // СТРОГАЯ задержка 17 секунд перед финальной проверкой
+          }, 17000); // СТРОГАЯ задержка 17 секунд перед второй прокруткой
+        }, 17000); // СТРОГАЯ задержка 17 секунд перед второй проверкой
+      }, 17000); // СТРОГАЯ задержка 17 секунд перед первой прокруткой
+    }, 17000); // СТРОГАЯ задержка 17 секунд перед первой проверкой
+  }
+  
+  // Новый метод для автоматической прокрутки ленты твитов
+  scrollTimeline() {
+    try {
+      console.log("📊 Auto-scrolling the timeline to load more tweets");
+      
+      // Находим основной контейнер ленты
+      const mainColumn = document.querySelector('[data-testid="primaryColumn"]');
+      const timelineContainer = mainColumn || document.body;
+      
+      // Текущая позиция прокрутки
+      const startScrollY = window.scrollY;
+      
+      // Плавная прокрутка на 2000 пикселей вниз
+      const scrollDistance = 2000;
+      const duration = 1000; // 1 секунда
+      const startTime = Date.now();
+      
+      const scrollStep = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const easeProgress = 0.5 - Math.cos(progress * Math.PI) / 2; // плавное ускорение и замедление
+        
+        // Вычисляем новую позицию прокрутки
+        const scrollY = startScrollY + scrollDistance * easeProgress;
+        
+        // Прокручиваем страницу
+        window.scrollTo(0, scrollY);
+        
+        // Продолжаем анимацию, если она не закончена
+        if (progress < 1) {
+          requestAnimationFrame(scrollStep);
+        } else {
+          console.log("📊 Timeline scrolled down by", scrollDistance, "pixels");
+          
+          // После прокрутки ждем немного и проверяем твиты повторно
+          setTimeout(() => {
+            console.log("📊 Running additional check after scrolling");
+            this.knownPostIds.clear();
+            this.checkForNewPosts();
+          }, 500);
+        }
+      };
+      
+      // Запускаем анимацию прокрутки
+      requestAnimationFrame(scrollStep);
+    } catch (error) {
+      console.error("❌ Error auto-scrolling timeline:", error);
     }
   }
   
   // Refresh the timeline to get new tweets
   refreshTimeline() {
     try {
-      console.log("📊 Refreshing Twitter timeline...");
+      console.log("📊 Refreshing Twitter timeline (30-second interval)...");
       
-      // Method 1: Try to find and click refresh button
+      // Method 1: Try to find and click refresh button - наиболее безопасный способ
       const refreshButton = document.querySelector('[data-testid="refresh"]');
       if (refreshButton) {
         console.log("📊 Found refresh button, clicking");
         refreshButton.click();
+        
+        // После нажатия на кнопку обновления, запланируем одну проверку твитов
+        setTimeout(() => {
+          console.log("📊 Running tweet check after refresh button click");
+          this.knownPostIds.clear(); // Очищаем список известных ID для повторной обработки твитов
+          this.checkForNewPosts();
+        }, 1500);
+        
         return;
       }
       
-      // Method 2: Toggle between tabs to force a refresh
-      console.log("📊 Refresh button not found, switching between tabs");
+      // Method 2: Запрос на полную перезагрузку страницы
+      console.log("📊 Refresh button not found, requesting full page reload");
       
-      // Find the tabs
-      const tabs = document.querySelectorAll('[role="tab"]');
-      if (tabs.length >= 2) {
-        // First click "For you" tab (or first tab)
-        setTimeout(() => {
-          console.log("📊 Clicking first tab ('For you')");
-          tabs[0].click();
-          
-          // Then click back to "Latest" tab after a short delay
-          setTimeout(() => {
-            console.log("📊 Returning to 'Latest' tab");
-            tabs[1].click();
-          }, 1000);
-        }, 500);
-      } else {
-        // Method 3: Try pressing F5 key to refresh the page
-        console.log("📊 Tabs not found, trying to reload the page");
-        window.location.reload();
-      }
+      // Отправляем событие, которое будет перехвачено в main процессе
+      window.postMessage({
+        type: 'request-page-reload',
+        timestamp: Date.now()
+      }, '*');
+      
+      // Запускаем проверку на случай, если перезагрузка не произойдет
+      setTimeout(() => {
+        console.log("📊 Running tweet check as fallback");
+        this.knownPostIds.clear();
+        this.checkForNewPosts();
+      }, 5000);
+      
+      return;
     } catch (error) {
       console.error("❌ Error refreshing feed:", error);
+      
+      // В случае ошибки, просто прокручиваем ленту как запасной вариант
+      console.log("📊 Error occurred, using scroll method instead");
+      this.scrollTimeline();
     }
   }
   
@@ -228,75 +373,79 @@ class TwitterPostObserver {
   
   // Check for new posts in the Twitter feed
   checkForNewPosts() {
-    // Find all article elements (tweets) in the timeline
-    const posts = document.querySelectorAll(this.options.postSelector);
-    let newPostsCount = 0;
+    // При каждой проверке ОЧИЩАЕМ предыдущий список ID твитов
+    // Это заставит обрабатывать все твиты заново при каждом обновлении
+    this.knownPostIds.clear();
     
-    // Store current check time to filter posts
-    const currentCheckTime = Date.now();
+    // Найдем все элементы твитов в ленте
+    const posts = document.querySelectorAll(this.options.postSelector);
+    let processedPostsCount = 0;
     
     if (posts.length > 0) {
       console.log(`📊 Found ${posts.length} tweets in the timeline`);
+    } else {
+      console.log("📊 No tweets found in timeline");
+      return;
     }
     
-    for (let i = 0; i < posts.length; i++) {
+    // Обработаем все найденные твиты
+    const currentBatch = [];
+    
+    // Сначала соберем информацию обо всех твитах в текущей ленте
+    for (let i = 0; i < Math.min(posts.length, this.options.maxTweetsPerCheck); i++) {
       try {
         const post = posts[i];
+        
+        // Получаем ID и данные твита
         const postId = this.getPostId(post);
+        if (!postId) continue;
         
-        // Skip already processed posts
-        if (!postId || this.knownPostIds.has(postId)) {
-          continue;
-        }
-        
-        // Get post content and metadata before adding to known posts
         const content = this.getPostContent(post);
+        if (!content) continue; // Пропускаем посты без контента
+        
         const timestamp = this.getPostTimestamp(post);
         const author = this.getPostAuthor(post);
         const links = this.getPostLinks(post);
         
-        // Skip if content is empty (likely an ad or non-tweet content)
-        if (!content) {
-          continue;
-        }
-        
-        // Add to known posts
-        this.knownPostIds.add(postId);
-        newPostsCount++;
-        
-        console.log(`📊 Detected new tweet: ${postId.substring(0, 10)}... from ${author}`);
-        
-        // Process the post
-        this.processPost({
+        // Добавляем в текущую партию для обработки
+        currentBatch.push({
           id: postId,
           text: content,
           timestamp: timestamp,
           author: author,
           links: links
         });
+        
+        processedPostsCount++;
       } catch (error) {
-        console.error("❌ Error processing tweet:", error);
+        console.error("❌ Error extracting tweet data:", error);
       }
     }
     
-    if (newPostsCount > 0) {
-      console.log(`📊 Processed ${newPostsCount} new tweets in this check`);
+    // Отправляем все твиты из текущей партии на обработку
+    if (currentBatch.length > 0) {
+      console.log(`📊 Processing ${currentBatch.length} tweets from timeline`);
+      
+      // Обрабатываем каждый твит
+      currentBatch.forEach(postData => {
+        this.processPost(postData);
+      });
+      
+      console.log(`📊 Processed ${currentBatch.length} tweets in this check`);
     }
     
-    // Update last check time
-    this.lastPostCheckedTime = currentCheckTime;
-    
-    // Clean up old post IDs to prevent memory leaks
-    this.cleanupOldPosts();
+    // Обновляем время последней проверки
+    this.lastPostCheckedTime = Date.now();
   }
   
   // Extract post ID from post element
   getPostId(postElement) {
     try {
       // Method 1: Look for Twitter's official tweet ID in the article
-      const officialIdContainer = postElement.querySelector('a[href*="/status/"]');
-      if (officialIdContainer) {
-        const hrefMatch = officialIdContainer.getAttribute('href').match(/\/status\/(\d+)/);
+      const officialIdContainers = postElement.querySelectorAll('a[href*="/status/"]');
+      for (const container of officialIdContainers) {
+        const href = container.getAttribute('href');
+        const hrefMatch = href.match(/\/status\/(\d+)/);
         if (hrefMatch && hrefMatch[1]) {
           return `tweet_${hrefMatch[1]}`;
         }
@@ -309,15 +458,17 @@ class TwitterPostObserver {
       
       if (idAttr) return `attr_${idAttr}`;
       
-      // Method 3: Create a hash from content and timestamp
-      const timeElement = postElement.querySelector('time');
-      const timeStamp = timeElement ? timeElement.getAttribute('datetime') : '';
-      
-      // Get the text content and create a short hash
+      // Method 3: Generate ID based on first few words of content and timestamp
       const contentEl = postElement.querySelector(this.options.contentSelector);
-      const contentText = contentEl ? contentEl.textContent.trim().substring(0, 40) : '';
+      if (contentEl) {
+        const contentText = contentEl.textContent.trim().substring(0, 50);
+        const words = contentText.split(/\s+/).slice(0, 5).join('_');
+        const timestamp = Date.now();
+        return `content_${timestamp}_${words}`;
+      }
       
-      return `tweet_${timeStamp}_${contentText.replace(/\s+/g, '_').substring(0, 20)}`;
+      // Method 4: Last resort - use a random ID with timestamp
+      return `post_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
     } catch (e) {
       console.error("❌ Error getting post ID:", e);
       return `post_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
@@ -492,6 +643,11 @@ class TwitterPostObserver {
   // Send post data to the main process via IPC
   sendPostToMain(postData) {
     try {
+      if (!postData || !postData.id || !postData.text) {
+        console.error("❌ Invalid tweet data:", postData);
+        return;
+      }
+      
       // Ensure text is properly encoded
       const sanitizedPostData = {
         ...postData,
@@ -499,15 +655,99 @@ class TwitterPostObserver {
         author: this.sanitizeText(postData.author || 'Unknown Author')
       };
       
-      // Use window.postMessage for communication with the preload script
+      // Добавляем визуальную индикацию обнаружения твита (для отладки)
+      this.showTweetDetectionIndicator(sanitizedPostData);
+      
+      // ПЕРВЫЙ МЕТОД: Используем window.postMessage для передачи через preload скрипт
+      console.log(`📊 Sending tweet to main process via postMessage: ${sanitizedPostData.author}`);
       window.postMessage({
         type: 'post-detected',
         postData: sanitizedPostData
       }, '*');
       
-      console.log(`📊 Sending tweet to main process: ${sanitizedPostData.author}`);
+      // ВТОРОЙ МЕТОД: Попробуем использовать прямой API, если он доступен
+      try {
+        if (window.electronAPI && typeof window.electronAPI.sendTweet === 'function') {
+          console.log(`📊 Sending tweet via direct electronAPI: ${sanitizedPostData.author}`);
+          window.electronAPI.sendTweet(sanitizedPostData);
+        }
+      } catch (apiError) {
+        console.warn("ℹ️ Direct electronAPI not available:", apiError);
+      }
+      
+      // ТРЕТИЙ МЕТОД: Сохраняем в глобальную переменную для отладки и резервного извлечения
+      window.lastDetectedTweet = sanitizedPostData;
+      window.allDetectedTweets = window.allDetectedTweets || [];
+      window.allDetectedTweets.push({
+        ...sanitizedPostData,
+        detectedAt: Date.now()
+      });
+      
+      // Ограничиваем размер истории твитов
+      if (window.allDetectedTweets.length > 100) {
+        window.allDetectedTweets = window.allDetectedTweets.slice(-100);
+      }
+      
+      return true;
     } catch (error) {
       console.error("❌ Error sending post data to main process:", error);
+      return false;
+    }
+  }
+  
+  // Визуальная индикация обнаружения твита (для отладки)
+  showTweetDetectionIndicator(tweetData) {
+    try {
+      // Создаем индикатор
+      const indicator = document.createElement('div');
+      
+      // Стилизуем индикатор
+      Object.assign(indicator.style, {
+        position: 'fixed',
+        bottom: '10px',
+        right: '10px',
+        backgroundColor: 'rgba(29, 161, 242, 0.9)', // Twitter blue
+        color: 'white',
+        padding: '10px 15px',
+        borderRadius: '50px',
+        zIndex: '9999',
+        fontWeight: 'bold',
+        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3)',
+        fontSize: '14px',
+        maxWidth: '300px',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        transition: 'opacity 0.5s, transform 0.3s',
+        transform: 'translateY(20px)',
+        opacity: '0'
+      });
+      
+      // Добавляем текст
+      indicator.textContent = `📝 Твит от ${tweetData.author}: ${tweetData.text.substring(0, 30)}...`;
+      
+      // Добавляем в DOM
+      document.body.appendChild(indicator);
+      
+      // Анимируем появление
+      setTimeout(() => {
+        indicator.style.opacity = '1';
+        indicator.style.transform = 'translateY(0)';
+      }, 10);
+      
+      // Удаляем через некоторое время
+      setTimeout(() => {
+        indicator.style.opacity = '0';
+        indicator.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+          if (indicator.parentNode) {
+            indicator.parentNode.removeChild(indicator);
+          }
+        }, 500);
+      }, 3000);
+    } catch (err) {
+      console.error("❌ Error showing tweet indicator:", err);
     }
   }
   
