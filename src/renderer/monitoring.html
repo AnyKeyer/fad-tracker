@@ -863,6 +863,88 @@
     .stat-card:nth-child(4) { animation-delay: 0.4s; }
     .stat-card:nth-child(5) { animation-delay: 0.5s; }
     .stat-card:nth-child(6) { animation-delay: 0.6s; }
+
+    /* Mini Sentiment Analysis styles */
+    .mini-sentiment-card {
+      padding: 15px;
+    }
+
+    .mini-sentiment-card h4 {
+      margin-bottom: 10px;
+    }
+    
+    .mini-sentiment-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    .sentiment-indicator-container {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+    
+    .mini-sentiment-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    
+    .mini-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .mini-bar-label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      width: 70px;
+      flex-shrink: 0;
+    }
+    
+    .mini-label {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+    
+    .mini-value {
+      margin-left: auto;
+      font-size: 0.75rem;
+      color: var(--text-primary);
+    }
+    
+    .mini-bar-wrapper {
+      flex-grow: 1;
+      height: 6px;
+      background-color: var(--bg-tertiary);
+      border-radius: 3px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+    
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    
+    .dot.positive {
+      background: var(--success);
+    }
+    
+    .dot.neutral {
+      background: var(--neutral);
+    }
+    
+    .dot.negative {
+      background: var(--danger);
+    }
   </style>
 </head>
 <body>
@@ -937,35 +1019,44 @@
         </div>
         
         <div class="ai-content">
-          <div class="ai-card">
+          <div class="ai-card mini-sentiment-card">
             <h4>Sentiment Analysis</h4>
-            <div class="sentiment-header">
-              <span>Overall Sentiment:</span>
-              <span id="overallSentiment" class="sentiment-indicator neutral">NEUTRAL</span>
-            </div>
-            
-            <div class="sentiment-details">
-              <div class="sentiment-bar-container">
-                <span class="sentiment-label">Positive</span>
-                <div class="sentiment-bar-wrapper">
-                  <div id="positiveSentimentBar" class="sentiment-bar positive" style="width: 33%;"></div>
-                  <span id="positiveSentimentValue" class="sentiment-percentage">33%</span>
-                </div>
+            <div class="mini-sentiment-layout">
+              <div class="sentiment-indicator-container">
+                <span id="overallSentiment" class="sentiment-indicator neutral">NEUTRAL</span>
               </div>
-              
-              <div class="sentiment-bar-container">
-                <span class="sentiment-label">Neutral</span>
-                <div class="sentiment-bar-wrapper">
-                  <div id="neutralSentimentBar" class="sentiment-bar neutral" style="width: 34%;"></div>
-                  <span id="neutralSentimentValue" class="sentiment-percentage">34%</span>
+              <div class="mini-sentiment-bars">
+                <div class="mini-bar-row">
+                  <div class="mini-bar-label">
+                    <span class="dot positive"></span>
+                    <span class="mini-label">Pos</span>
+                    <span id="positiveSentimentValue" class="mini-value">33%</span>
+                  </div>
+                  <div class="mini-bar-wrapper">
+                    <div id="positiveSentimentBar" class="sentiment-bar positive" style="width: 33%;"></div>
+                  </div>
                 </div>
-              </div>
-              
-              <div class="sentiment-bar-container">
-                <span class="sentiment-label">Negative</span>
-                <div class="sentiment-bar-wrapper">
-                  <div id="negativeSentimentBar" class="sentiment-bar negative" style="width: 33%;"></div>
-                  <span id="negativeSentimentValue" class="sentiment-percentage">33%</span>
+                
+                <div class="mini-bar-row">
+                  <div class="mini-bar-label">
+                    <span class="dot neutral"></span>
+                    <span class="mini-label">Neu</span>
+                    <span id="neutralSentimentValue" class="mini-value">34%</span>
+                  </div>
+                  <div class="mini-bar-wrapper">
+                    <div id="neutralSentimentBar" class="sentiment-bar neutral" style="width: 34%;"></div>
+                  </div>
+                </div>
+                
+                <div class="mini-bar-row">
+                  <div class="mini-bar-label">
+                    <span class="dot negative"></span>
+                    <span class="mini-label">Neg</span>
+                    <span id="negativeSentimentValue" class="mini-value">33%</span>
+                  </div>
+                  <div class="mini-bar-wrapper">
+                    <div id="negativeSentimentBar" class="sentiment-bar negative" style="width: 33%;"></div>
+                  </div>
                 </div>
               </div>
             </div>
