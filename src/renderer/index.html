@@ -128,57 +128,6 @@
       fill: white;
     }
     
-    .user-info {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 20px;
-      background-color: var(--card-bg);
-      padding: 12px 20px;
-      border-radius: 30px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-      border: 1px solid var(--border);
-    }
-    
-    .user-info img {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      margin-right: 15px;
-      border: 2px solid var(--accent);
-    }
-    
-    .user-info span {
-      color: var(--text-primary);
-    }
-    
-    .user-info a {
-      color: var(--accent);
-      text-decoration: none;
-      font-weight: bold;
-    }
-    
-    .user-info a:hover {
-      text-decoration: underline;
-    }
-    
-    .logout-btn {
-      background-color: rgba(244, 33, 46, 0.1);
-      color: var(--danger);
-      border: 1px solid var(--danger);
-      border-radius: 30px;
-      padding: 8px 16px;
-      font-size: 14px;
-      cursor: pointer;
-      margin-left: 15px;
-      transition: all 0.2s ease;
-      font-weight: 600;
-    }
-    
-    .logout-btn:hover {
-      background-color: rgba(244, 33, 46, 0.2);
-    }
-    
     .analysis-form {
       display: none;
       text-align: left;
@@ -357,13 +306,6 @@
         </svg>
         Login with Twitter
       </button>
-    </div>
-    
-    <!-- User Info Display (Initially Hidden) -->
-    <div id="userInfoSection" class="user-info" style="display: none;">
-      <img id="userAvatar" src="" alt="Profile picture">
-      <span>Logged in as: <a id="userProfileLink" href="#" target="_blank">@username</a></span>
-      <button id="logoutBtn" class="logout-btn">Logout</button>
     </div>
     
     <!-- Main Buttons (Initially Hidden) -->

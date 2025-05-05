@@ -6,11 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Elements
   const loginSection = document.getElementById('loginSection');
   const twitterLoginBtn = document.getElementById('twitterLoginBtn');
-  const userInfoSection = document.getElementById('userInfoSection');
-  const userAvatar = document.getElementById('userAvatar');
-  const userName = document.getElementById('userName');
-  const userProfileLink = document.getElementById('userProfileLink');
-  const logoutBtn = document.getElementById('logoutBtn');
   const mainButtonsSection = document.querySelector('.main-buttons');
   const startAnalysisBtn = document.getElementById('startAnalysisBtn');
   const settingsBtn = document.getElementById('settingsBtn');
@@ -51,12 +46,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (result.success) {
         isLoggedIn = true;
         
-        // Update UI with user info
-        updateUserInfoDisplay(result.userInfo);
-        
         // Show main buttons and hide login section
         loginSection.style.display = 'none';
-        userInfoSection.style.display = 'flex';
         mainButtonsSection.style.display = 'flex';
       } else {
         alert(`Login failed: ${result.error}`);
@@ -66,59 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
       alert(`Error during login: ${error.message}`);
     }
   });
-  
-  // Twitter Logout Handler
-  logoutBtn.addEventListener('click', async () => {
-    try {
-      const result = await window.api.twitterLogout();
-      
-      if (result.success) {
-        isLoggedIn = false;
-        
-        // Reset UI state
-        userProfileLink.textContent = '@username';
-        userProfileLink.href = '#';
-        userAvatar.src = '';
-        
-        // Show login section and hide user info and main buttons
-        loginSection.style.display = 'block';
-        userInfoSection.style.display = 'none';
-        mainButtonsSection.style.display = 'none';
-        
-        // Reset any active analysis
-        analysisForm.style.display = 'none';
-        keywords.length = 0;
-        excludedTerms.length = 0;
-        keywordTags.innerHTML = '';
-        excludeTags.innerHTML = '';
-      } else {
-        alert(`Logout failed: ${result.error}`);
-      }
-    } catch (error) {
-      alert(`Error during logout: ${error.message}`);
-    }
-  });
-  
-  // Function to display user information
-  function updateUserInfoDisplay(userInfo) {
-    if (userInfo) {
-      const username = userInfo.username || '@user';
-      const profileLink = document.getElementById('userProfileLink');
-      profileLink.textContent = username;
-      
-      // Set profile link URL
-      const twitterHandle = username.startsWith('@') ? username.substring(1) : username;
-      profileLink.href = `https://twitter.com/${twitterHandle}`;
-      
-      if (userInfo.avatarSrc) {
-        userAvatar.src = userInfo.avatarSrc;
-      } else {
-        // Use a default avatar if none is available
-        userAvatar.src = 'https://abs.twimg.com/sticky/default_profile_images/default_profile_normal.png';
-      }
-      userInfoSection.style.display = 'flex';
-    }
-  }
 
   // Event listeners
   startAnalysisBtn.addEventListener('click', () => {
@@ -270,9 +208,229 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 200);
   }
   
+  // Получаем сохраненный ключ API Gemini из localStorage
+  function getGeminiApiKey() {
+    return localStorage.getItem('geminiApiKey') || '';
+  }
+  
+  // Сохраняем ключ API Gemini
+  function saveGeminiApiKey(apiKey) {
+    localStorage.setItem('geminiApiKey', apiKey);
+  }
+  
   // Settings button handler
   settingsBtn.addEventListener('click', () => {
-    alert('Settings functionality will be implemented in future updates.');
+    // Скрываем основные кнопки
+    mainButtonsSection.style.display = 'none';
+    
+    // Создаем контейнер для настроек
+    const settingsContainer = document.createElement('div');
+    settingsContainer.className = 'analysis-form';
+    settingsContainer.style.display = 'block';
+    settingsContainer.style.animation = 'fadeIn 0.3s ease';
+    
+    // Заголовок настроек
+    const settingsTitle = document.createElement('h2');
+    settingsTitle.textContent = 'Settings';
+    settingsContainer.appendChild(settingsTitle);
+    
+    // Создаем секцию настроек AI
+    const aiSettingsSection = document.createElement('div');
+    aiSettingsSection.className = 'form-group';
+    aiSettingsSection.style.marginBottom = '30px';
+    
+    // Заголовок секции настроек AI
+    const aiSettingsTitle = document.createElement('h3');
+    aiSettingsTitle.textContent = 'AI Settings';
+    aiSettingsTitle.style.color = 'var(--accent)';
+    aiSettingsTitle.style.marginBottom = '15px';
+    aiSettingsSection.appendChild(aiSettingsTitle);
+    
+    // Описание
+    const aiSettingsDesc = document.createElement('p');
+    aiSettingsDesc.textContent = 'Configure AI settings for tweet analysis and sentiment detection.';
+    aiSettingsDesc.style.color = 'var(--text-secondary)';
+    aiSettingsDesc.style.marginBottom = '20px';
+    aiSettingsSection.appendChild(aiSettingsDesc);
+    
+    // Поле ввода ключа API Gemini
+    const apiKeyLabel = document.createElement('label');
+    apiKeyLabel.htmlFor = 'gemini-api-key';
+    apiKeyLabel.textContent = 'Gemini API Key:';
+    apiKeyLabel.style.display = 'block';
+    apiKeyLabel.style.marginBottom = '10px';
+    aiSettingsSection.appendChild(apiKeyLabel);
+    
+    const apiKeyInput = document.createElement('input');
+    apiKeyInput.type = 'text';
+    apiKeyInput.id = 'gemini-api-key';
+    apiKeyInput.placeholder = 'Enter your Gemini API key';
+    apiKeyInput.value = getGeminiApiKey();
+    apiKeyInput.style.width = '100%';
+    apiKeyInput.style.padding = '12px 16px';
+    apiKeyInput.style.border = '1px solid var(--border)';
+    apiKeyInput.style.borderRadius = '8px';
+    apiKeyInput.style.fontSize = '16px';
+    apiKeyInput.style.backgroundColor = 'var(--bg-primary)';
+    apiKeyInput.style.color = 'var(--text-primary)';
+    apiKeyInput.style.marginBottom = '15px';
+    aiSettingsSection.appendChild(apiKeyInput);
+    
+    // Кнопка сохранения ключа API
+    const saveApiKeyBtn = document.createElement('button');
+    saveApiKeyBtn.className = 'btn btn-success';
+    saveApiKeyBtn.textContent = 'Save API Key';
+    saveApiKeyBtn.style.padding = '10px 20px';
+    saveApiKeyBtn.style.fontSize = '16px';
+    saveApiKeyBtn.addEventListener('click', () => {
+      const apiKey = apiKeyInput.value.trim();
+      saveGeminiApiKey(apiKey);
+      
+      // Показываем уведомление о сохранении
+      const notification = document.createElement('div');
+      notification.textContent = 'API key saved successfully!';
+      notification.style.backgroundColor = 'var(--success)';
+      notification.style.color = 'white';
+      notification.style.padding = '10px 15px';
+      notification.style.borderRadius = '5px';
+      notification.style.marginTop = '10px';
+      notification.style.animation = 'fadeIn 0.3s ease';
+      notification.style.marginBottom = '15px';
+      
+      // Удаляем предыдущее уведомление, если оно существует
+      const existingNotification = aiSettingsSection.querySelector('.notification');
+      if (existingNotification) {
+        existingNotification.remove();
+      }
+      
+      notification.className = 'notification';
+      aiSettingsSection.appendChild(notification);
+      
+      // Автоматически удаляем уведомление через 3 секунды
+      setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => notification.remove(), 300);
+      }, 3000);
+    });
+    aiSettingsSection.appendChild(saveApiKeyBtn);
+    
+    // Добавляем секцию настроек AI в контейнер настроек
+    settingsContainer.appendChild(aiSettingsSection);
+    
+    // Создаем секцию настроек трастовости аккаунта
+    const trustSettingsSection = document.createElement('div');
+    trustSettingsSection.className = 'form-group';
+    trustSettingsSection.style.marginBottom = '30px';
+    
+    // Заголовок секции настроек трастовости
+    const trustSettingsTitle = document.createElement('h3');
+    trustSettingsTitle.textContent = 'Account Trust Settings';
+    trustSettingsTitle.style.color = 'var(--accent)';
+    trustSettingsTitle.style.marginBottom = '15px';
+    trustSettingsSection.appendChild(trustSettingsTitle);
+    
+    // Описание
+    const trustSettingsDesc = document.createElement('p');
+    trustSettingsDesc.textContent = 'Configure trust levels for Twitter accounts to filter and prioritize tweets.';
+    trustSettingsDesc.style.color = 'var(--text-secondary)';
+    trustSettingsSection.appendChild(trustSettingsDesc);
+    
+    // Сообщение о будущей реализации
+    const comingSoonMsg = document.createElement('div');
+    comingSoonMsg.textContent = 'This feature will be available in a future update.';
+    comingSoonMsg.style.backgroundColor = 'rgba(29, 155, 240, 0.1)';
+    comingSoonMsg.style.padding = '12px 16px';
+    comingSoonMsg.style.borderRadius = '8px';
+    comingSoonMsg.style.marginTop = '15px';
+    comingSoonMsg.style.color = 'var(--accent)';
+    trustSettingsSection.appendChild(comingSoonMsg);
+    
+    // Добавляем секцию настроек трастовости в контейнер настроек
+    settingsContainer.appendChild(trustSettingsSection);
+    
+    // Секция выхода из аккаунта
+    const logoutSection = document.createElement('div');
+    logoutSection.className = 'form-group';
+    logoutSection.style.marginBottom = '30px';
+    
+    // Заголовок секции выхода
+    const logoutTitle = document.createElement('h3');
+    logoutTitle.textContent = 'Account';
+    logoutTitle.style.color = 'var(--accent)';
+    logoutTitle.style.marginBottom = '15px';
+    logoutSection.appendChild(logoutTitle);
+    
+    // Кнопка логаута
+    const logoutButton = document.createElement('button');
+    logoutButton.className = 'btn btn-danger';
+    logoutButton.textContent = 'Logout from Twitter';
+    logoutButton.style.width = '100%';
+    logoutButton.addEventListener('click', async () => {
+      // Предупреждаем пользователя о завершении всех анализов
+      const confirmed = confirm("Warning: Logging out will stop all active analyses. Are you sure you want to continue?");
+      
+      if (confirmed) {
+        try {
+          // Останавливаем любой активный анализ
+          const stopResult = await window.api.stopAnalysis().catch(() => ({ success: true }));
+          
+          // Выходим из Twitter
+          const result = await window.api.twitterLogout();
+          
+          if (result.success) {
+            isLoggedIn = false;
+            
+            // Закрываем окно настроек
+            if (settingsContainer.parentNode) {
+              settingsContainer.parentNode.removeChild(settingsContainer);
+            }
+            
+            // Show login section and hide main buttons
+            loginSection.style.display = 'block';
+            mainButtonsSection.style.display = 'none';
+            
+            // Reset any active analysis
+            analysisForm.style.display = 'none';
+            keywords.length = 0;
+            excludedTerms.length = 0;
+            keywordTags.innerHTML = '';
+            excludeTags.innerHTML = '';
+          } else {
+            alert(`Logout failed: ${result.error}`);
+          }
+        } catch (error) {
+          alert(`Error during logout: ${error.message}`);
+        }
+      }
+    });
+    logoutSection.appendChild(logoutButton);
+    
+    // Добавляем секцию логаута в контейнер настроек
+    settingsContainer.appendChild(logoutSection);
+    
+    // Кнопка возврата
+    const backButtonContainer = document.createElement('div');
+    backButtonContainer.style.marginTop = '30px';
+    backButtonContainer.style.textAlign = 'center';
+    
+    const backButton = document.createElement('button');
+    backButton.className = 'btn btn-secondary';
+    backButton.textContent = 'Back to Main Menu';
+    backButton.addEventListener('click', () => {
+      // Удаляем контейнер настроек
+      if (settingsContainer.parentNode) {
+        settingsContainer.parentNode.removeChild(settingsContainer);
+      }
+      
+      // Показываем основные кнопки
+      mainButtonsSection.style.display = 'flex';
+    });
+    
+    backButtonContainer.appendChild(backButton);
+    settingsContainer.appendChild(backButtonContainer);
+    
+    // Добавляем контейнер настроек на страницу
+    document.querySelector('.container').appendChild(settingsContainer);
   });
   
   // Help button handler
@@ -287,12 +445,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (status.loggedIn) {
         isLoggedIn = true;
         
-        // Update UI with stored user info
-        updateUserInfoDisplay(status.userInfo);
-        
         // Show main UI and hide login section
         loginSection.style.display = 'none';
-        userInfoSection.style.display = 'flex';
         mainButtonsSection.style.display = 'flex';
       }
     } catch (error) {

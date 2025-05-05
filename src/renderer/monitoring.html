@@ -136,6 +136,13 @@
       margin-bottom: 15px;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
       border: 1px solid var(--border);
+      position: relative;
+      transition: all 0.3s ease;
+    }
+    
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
     }
     
     .stat-title {
@@ -145,38 +152,110 @@
       font-size: 14px;
     }
     
-    .stat-value {
-      font-size: 24px;
-      font-weight: 700;
+    .stat-value-wrapper {
       display: flex;
       align-items: center;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+    
+    .stat-value {
+      font-size: 20px;
+      font-weight: 700;
       color: var(--text-primary);
     }
     
     .trend-indicator {
       margin-left: 10px;
-      font-size: 14px;
-      background-color: rgba(255, 255, 255, 0.05);
-      width: 24px;
-      height: 24px;
+      font-size: 16px;
+      background-color: rgba(255, 255, 255, 0.1);
+      width: 28px;
+      height: 28px;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 12px;
+      border-radius: 50%;
+      font-weight: bold;
     }
     
     .trend-up {
       color: var(--success);
-      background-color: rgba(0, 186, 124, 0.1);
+      background-color: rgba(0, 186, 124, 0.15);
     }
     
     .trend-down {
       color: var(--danger);
-      background-color: rgba(244, 33, 46, 0.1);
+      background-color: rgba(244, 33, 46, 0.15);
     }
     
     .trend-neutral {
       color: var(--text-secondary);
+    }
+    
+    .trend-value {
+      font-size: 14px;
+      font-weight: 600;
+      white-space: nowrap;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    
+    .trend-value.up {
+      color: var(--success);
+      background-color: rgba(0, 186, 124, 0.1);
+    }
+    
+    .trend-value.down {
+      color: var(--danger);
+      background-color: rgba(244, 33, 46, 0.1);
+    }
+    
+    .trend-chart {
+      margin-top: 5px;
+      width: 100%;
+      height: 70px;
+      border-radius: 4px;
+      background-color: rgba(0, 0, 0, 0.1);
+    }
+    
+    @keyframes pulse-up {
+      0% { box-shadow: 0 0 0 0 rgba(0, 186, 124, 0.4); }
+      70% { box-shadow: 0 0 0 10px rgba(0, 186, 124, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(0, 186, 124, 0); }
+    }
+    
+    @keyframes pulse-down {
+      0% { box-shadow: 0 0 0 0 rgba(244, 33, 46, 0.4); }
+      70% { box-shadow: 0 0 0 10px rgba(244, 33, 46, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(244, 33, 46, 0); }
+    }
+    
+    .pulse-up {
+      animation: pulse-up 2s 1;
+      background-color: var(--card-bg);
+      position: relative;
+      z-index: 1;
+    }
+    
+    .pulse-down {
+      animation: pulse-down 2s 1;
+      background-color: var(--card-bg);
+      position: relative;
+      z-index: 1;
+    }
+    
+    .history-tooltip {
+      position: absolute;
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 8px 12px;
+      z-index: 1000;
+      font-size: 12px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
     }
     
     .keyword-list {
@@ -222,19 +301,28 @@
       box-shadow: 0 2px 5px rgba(244, 33, 46, 0.2);
     }
 
-    .account-info {
+    .stop-button-compact {
+      background-color: var(--danger);
+      color: white;
+      border: none;
+      border-radius: 20px;
+      padding: 8px 16px;
       font-size: 14px;
-      color: var(--text-secondary);
-    }
-
-    .account-link {
-      color: var(--accent);
-      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
       font-weight: 600;
+      box-shadow: 0 4px 8px rgba(244, 33, 46, 0.3);
     }
 
-    .account-link:hover {
-      text-decoration: underline;
+    .stop-button-compact:hover {
+      background-color: var(--danger-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 10px rgba(244, 33, 46, 0.4);
+    }
+
+    .stop-button-compact:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 5px rgba(244, 33, 46, 0.2);
     }
     
     .twitter-status-indicator {
@@ -318,9 +406,7 @@
     <div class="tweets-section">
       <div class="browser-header">
         <h3 class="browser-title">Found Tweets</h3>
-        <span class="account-info" id="accountInfo">
-          Analyzing with account: <a href="#" target="_blank" class="account-link" id="accountLink">@username</a>
-        </span>
+        <button id="stopAnalysisBtn" class="stop-button-compact">Stop Analysis</button>
       </div>
       
       <div class="twitter-status-indicator">
@@ -351,35 +437,48 @@
       </div>
       
       <div class="stat-card">
-        <div class="stat-title">Posts in Last 5 Minutes</div>
-        <div id="posts5min" class="stat-value">
-          0
-          <span id="trend5min" class="trend-indicator trend-neutral">—</span>
+        <div class="stat-title">Posts in Last Minute</div>
+        <div class="stat-value-wrapper">
+          <div id="posts1min" class="stat-value">0</div>
+          <span id="trendValue1min" class="trend-value"></span>
         </div>
+        <canvas id="chart1min" class="trend-chart" width="280" height="70"></canvas>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-title">Posts in Last 5 Minutes</div>
+        <div class="stat-value-wrapper">
+          <div id="posts5min" class="stat-value">0</div>
+          <span id="trendValue5min" class="trend-value"></span>
+        </div>
+        <canvas id="chart5min" class="trend-chart" width="280" height="70"></canvas>
       </div>
       
       <div class="stat-card">
         <div class="stat-title">Posts in Last 15 Minutes</div>
-        <div id="posts15min" class="stat-value">
-          0
-          <span id="trend15min" class="trend-indicator trend-neutral">—</span>
+        <div class="stat-value-wrapper">
+          <div id="posts15min" class="stat-value">0</div>
+          <span id="trendValue15min" class="trend-value"></span>
         </div>
+        <canvas id="chart15min" class="trend-chart" width="280" height="70"></canvas>
       </div>
       
       <div class="stat-card">
         <div class="stat-title">Posts in Last 30 Minutes</div>
-        <div id="posts30min" class="stat-value">
-          0
-          <span id="trend30min" class="trend-indicator trend-neutral">—</span>
+        <div class="stat-value-wrapper">
+          <div id="posts30min" class="stat-value">0</div>
+          <span id="trendValue30min" class="trend-value"></span>
         </div>
+        <canvas id="chart30min" class="trend-chart" width="280" height="70"></canvas>
       </div>
       
       <div class="stat-card">
         <div class="stat-title">Posts in Last 60 Minutes</div>
-        <div id="posts60min" class="stat-value">
-          0
-          <span id="trend60min" class="trend-indicator trend-neutral">—</span>
+        <div class="stat-value-wrapper">
+          <div id="posts60min" class="stat-value">0</div>
+          <span id="trendValue60min" class="trend-value"></span>
         </div>
+        <canvas id="chart60min" class="trend-chart" width="280" height="70"></canvas>
       </div>
       
       <div class="stat-card">

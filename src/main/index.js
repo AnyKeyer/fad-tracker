@@ -13,6 +13,9 @@ let monitoringWindow = null;
 let browser = null;
 let page = null;
 
+// Глобальная ссылка на функцию injectObserver
+let injectObserverFn = null;
+
 // Initialize puppeteer browser
 async function initBrowser() {
   try {
@@ -486,7 +489,7 @@ async function refreshPage() {
         await page.waitForTimeout(2000); // Увеличиваем время ожидания для полной загрузки страницы
         
         // Явно восстанавливаем наблюдатель после перезагрузки страницы
-        await injectObserver();
+        await injectObserverFn();
         
         // Обязательно очищаем историю просмотренных твитов при обновлении страницы
         await page.evaluate(() => {
@@ -1005,6 +1008,9 @@ async function setupTweetMonitoring(page) {
       return true;
     }
 
+    // Сохраняем ссылку на функцию глобально
+    injectObserverFn = injectObserver;
+
     // Expose a function to receive post data from the page, но только если она еще не зарегистрирована
     try {
       // Проверяем, существует ли уже эта функция в контексте страницы
@@ -1057,3 +1063,161 @@ async function setupTweetMonitoring(page) {
     return false;
   }
 }
+
+// Функция для получения информации о профиле пользователя (подписчики и подписки)
+async function fetchTwitterProfileInfo(username) {
+  try {
+    if (!browser) {
+      log.error("Browser not initialized, can't fetch profile info");
+      return null;
+    }
+    
+    log.info(`Fetching profile info for user: ${username}`);
+    
+    // Если имя пользователя начинается с @, удаляем его
+    if (username.startsWith('@')) {
+      username = username.substring(1);
+    }
+    
+    // Проверяем, есть ли активная страница поиска Twitter
+    if (!page) {
+      log.error("No active Twitter page found for hovering user profiles");
+      return { followers: 0, following: 0, verified: false };
+    }
+    
+    // Используем существующую страницу для получения информации о профиле через всплывающую карточку
+    const profileInfo = await page.evaluate(async (username) => {
+      try {
+        console.log(`Trying to fetch profile info for ${username} using profile card`);
+        
+        // Ищем элементы с текстом, содержащим имя пользователя
+        const possibleProfileLinks = Array.from(document.querySelectorAll('a[role="link"]'))
+          .filter(el => {
+            const text = el.textContent.trim().toLowerCase();
+            return text.includes(`@${username.toLowerCase()}`) || 
+                   text === username.toLowerCase();
+          });
+        
+        if (possibleProfileLinks.length === 0) {
+          console.log(`No profile links found for @${username}`);
+          return { followers: 0, following: 0, verified: false };
+        }
+        
+        // Берем первый найденный элемент
+        const profileLink = possibleProfileLinks[0];
+        console.log(`Found profile link for @${username}`);
+        
+        // Создаем функцию для эмуляции наведения курсора
+        function simulateHover(element) {
+          const event = new MouseEvent('mouseover', {
+            bubbles: true,
+            cancelable: true,
+            view: window
+          });
+          element.dispatchEvent(event);
+        }
+        
+        // Функция для ожидания появления профильной карточки
+        function waitForProfileCard() {
+          return new Promise((resolve) => {
+            const checkInterval = setInterval(() => {
+              // Проверяем, появилась ли карточка профиля
+              const card = document.querySelector('[data-testid="hover-card"], [role="tooltip"], [role="dialog"][aria-modal="false"]');
+              if (card) {
+                clearInterval(checkInterval);
+                resolve(card);
+              }
+            }, 100);
+            
+            // Таймаут, чтобы не ждать вечно
+            setTimeout(() => {
+              clearInterval(checkInterval);
+              resolve(null);
+            }, 2000);
+          });
+        }
+        
+        // Эмулируем наведение курсора
+        simulateHover(profileLink);
+        console.log(`Hovering over profile link for @${username}`);
+        
+        // Ждем появления карточки профиля
+        const profileCard = await waitForProfileCard();
+        
+        if (!profileCard) {
+          console.log(`Profile card did not appear for @${username}`);
+          return { followers: 0, following: 0, verified: false };
+        }
+        
+        console.log(`Profile card appeared for @${username}`);
+        
+        // Извлекаем данные о подписчиках и подписках
+        const statElements = profileCard.querySelectorAll('a[href*="/followers"], a[href*="/following"]');
+        
+        let followers = 0;
+        let following = 0;
+        
+        statElements.forEach(element => {
+          const text = element.textContent.trim();
+          const href = element.getAttribute('href') || '';
+          
+          // Проверяем, содержит ли элемент число
+          const numMatch = text.match(/(\d+(?:[,.]\d+)*)/);
+          if (!numMatch) return;
+          
+          // Обрабатываем число, удаляя запятые и обрабатывая сокращения
+          let numStr = numMatch[1].replace(/,/g, '');
+          let multiplier = 1;
+          
+          if (text.includes('K') || text.includes('k')) {
+            multiplier = 1000;
+            numStr = numStr.replace(/[kK]/g, '');
+          } else if (text.includes('M') || text.includes('m')) {
+            multiplier = 1000000;
+            numStr = numStr.replace(/[mM]/g, '');
+          }
+          
+          const value = parseFloat(numStr) * multiplier;
+          
+          // Определяем тип статистики на основе URL
+          if (href.includes('/followers')) {
+            followers = value;
+          } else if (href.includes('/following')) {
+            following = value;
+          }
+        });
+        
+        // Проверяем, верифицирован ли аккаунт
+        const verified = profileCard.querySelector('[data-testid="icon-verified"]') !== null;
+        
+        console.log(`Found profile stats for @${username}: ${followers} followers, ${following} following, verified: ${verified}`);
+        
+        // Скрываем карточку профиля (кликаем в сторону)
+        document.body.click();
+        
+        return { followers, following, verified };
+      } catch (error) {
+        console.error(`Error parsing profile card for @${username}:`, error);
+        return { followers: 0, following: 0, verified: false };
+      }
+    }, username);
+    
+    log.info(`Profile card info fetched for ${username}: ${profileInfo.followers} followers, ${profileInfo.following} following, verified: ${profileInfo.verified}`);
+    
+    return profileInfo;
+  } catch (error) {
+    log.error(`Error fetching profile info for ${username}:`, error);
+    return { followers: 0, following: 0, verified: false };
+  }
+}
+
+// Добавляем IPC метод для получения информации о профиле
+ipcMain.handle('get-twitter-profile-info', async (event, username) => {
+  try {
+    const profileInfo = await fetchTwitterProfileInfo(username);
+    return { success: true, profileInfo };
+  } catch (error) {
+    log.error(`Error in get-twitter-profile-info handler:`, error);
+    return { success: false, error: error.message };
+  }
+});

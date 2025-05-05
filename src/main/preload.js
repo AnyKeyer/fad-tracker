@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld(
     checkTwitterLoginStatus: () => ipcRenderer.invoke('check-twitter-login-status'),
     getTwitterUserInfo: () => ipcRenderer.invoke('get-twitter-user-info'),
     getTwitterCookies: () => ipcRenderer.invoke('get-twitter-cookies'),
+    getTwitterProfileInfo: (username) => ipcRenderer.invoke('get-twitter-profile-info', username),
     onPostData: (callback) => ipcRenderer.on('post-data', (_, data) => callback(data)),
     onBrowserTarget: (callback) => ipcRenderer.on('browser-target', (_, targetId) => callback(targetId)),
     onSearchInfo: (callback) => ipcRenderer.on('search-info', (_, info) => callback(info)),
