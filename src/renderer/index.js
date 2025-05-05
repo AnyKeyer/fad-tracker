@@ -99,6 +99,38 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       
       if (result.success) {
+        // Add a brief animation effect when starting monitoring
+        const successFeedback = document.createElement('div');
+        successFeedback.textContent = 'Starting monitoring...';
+        successFeedback.style.position = 'fixed';
+        successFeedback.style.top = '20px';
+        successFeedback.style.left = '50%';
+        successFeedback.style.transform = 'translateX(-50%)';
+        successFeedback.style.background = 'var(--accent-gradient)';
+        successFeedback.style.color = 'white';
+        successFeedback.style.padding = '10px 20px';
+        successFeedback.style.borderRadius = '20px';
+        successFeedback.style.boxShadow = 'var(--card-shadow)';
+        successFeedback.style.zIndex = '9999';
+        successFeedback.style.opacity = '0';
+        successFeedback.style.transition = 'opacity 0.3s ease';
+        
+        document.body.appendChild(successFeedback);
+        
+        // Show and then fade out the feedback
+        setTimeout(() => {
+          successFeedback.style.opacity = '1';
+          
+          setTimeout(() => {
+            successFeedback.style.opacity = '0';
+            setTimeout(() => {
+              if (successFeedback.parentNode) {
+                successFeedback.parentNode.removeChild(successFeedback);
+              }
+            }, 300);
+          }, 1500);
+        }, 10);
+        
         // Reset the UI
         mainButtonsSection.style.display = 'flex';
         analysisForm.style.display = 'none';

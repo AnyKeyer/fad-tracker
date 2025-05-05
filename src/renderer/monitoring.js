@@ -4,7 +4,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const keywordsList = document.getElementById('keywordsList');
   const excludedTermsContainer = document.getElementById('excludedTermsContainer');
   const excludedTermsList = document.getElementById('excludedTermsList');
-  const totalPosts = document.getElementById('totalPosts');
   const posts1min = document.getElementById('posts1min');
   const posts5min = document.getElementById('posts5min');
   const posts15min = document.getElementById('posts15min');
@@ -242,14 +241,8 @@ document.addEventListener('DOMContentLoaded', () => {
       
       console.log(`MONITORING UI: Обработка нового твита: ${postData.id}`);
       
-      // Показываем визуальную индикацию нового твита
-      showNewTweetIndicator();
-      
       // Текущее время для статистики
       const timestamp = Date.now();
-      
-      // Показываем уведомление о новом твите
-      showTweetNotification(postData);
       
       // Добавляем твит в список твитов в интерфейсе
       addTweetToList(postData);
@@ -263,7 +256,6 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         // Увеличиваем общий счетчик
         stats.totalPosts++;
-        totalPosts.textContent = stats.totalPosts;
         console.log(`MONITORING UI: Твит добавлен в статистику: ${postData.id}, всего твитов: ${stats.totalPosts}`);
         
         // Добавляем временную метку для подсчета твитов по временным интервалам
@@ -276,62 +268,6 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('MONITORING UI: Ошибка при обработке данных твита:', error);
     }
   });
-  
-  // Визуальная индикация нового твита
-  function showNewTweetIndicator() {
-    try {
-      // Добавить мигающий индикатор в верхнюю часть страницы
-      const indicator = document.createElement('div');
-      
-      // Задаем стили
-      Object.assign(indicator.style, {
-        position: 'fixed',
-        top: '10px',
-        right: '10px',
-        backgroundColor: '#1da1f2', // Twitter синий
-        color: 'white',
-        padding: '6px 12px',
-        borderRadius: '20px',
-        zIndex: '9999',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3)',
-        animation: 'pulse 1s infinite alternate'
-      });
-      
-      // Добавляем анимацию
-      const style = document.createElement('style');
-      style.textContent = `
-        @keyframes pulse {
-          0% { opacity: 0.7; transform: scale(1); }
-          100% { opacity: 1; transform: scale(1.1); }
-        }
-      `;
-      document.head.appendChild(style);
-      
-      // Текст индикатора
-      indicator.textContent = '🔔 Новый твит получен!';
-      
-      // Добавляем в DOM
-      document.body.appendChild(indicator);
-      
-      // Удаляем через 3 секунды
-      setTimeout(() => {
-        indicator.style.transition = 'opacity 0.5s, transform 0.5s';
-        indicator.style.opacity = '0';
-        indicator.style.transform = 'translateY(-20px)';
-        
-        setTimeout(() => {
-          if (indicator.parentNode) {
-            indicator.parentNode.removeChild(indicator);
-          }
-          if (style.parentNode) {
-            style.parentNode.removeChild(style);
-          }
-        }, 500);
-      }, 3000);
-    } catch (err) {
-      console.error('Ошибка при отображении индикатора:', err);
-    }
-  }
   
   // Добавляем твит в список твитов
   async function addTweetToList(postData) {
@@ -411,47 +347,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   
-  // Показываем уведомление о новом твите
-  function showTweetNotification(postData) {
-    // Создаем элемент уведомления
-    const notification = document.createElement('div');
-    notification.className = 'tweet-notification';
-    
-    // Добавляем информацию об авторе, если доступна
-    if (postData.author) {
-      const author = document.createElement('strong');
-      author.textContent = postData.author;
-      author.style.display = 'block';
-      author.style.marginBottom = '5px';
-      notification.appendChild(author);
-    }
-    
-    // Обрезаем текст, если он слишком длинный
-    const text = postData.text.length > 100 ? 
-      postData.text.substring(0, 100) + '...' : 
-      postData.text;
-    
-    const content = document.createElement('p');
-    content.style.margin = '0';
-    content.style.fontSize = '14px';
-    content.textContent = text;
-    notification.appendChild(content);
-    
-    // Добавляем в документ
-    document.body.appendChild(notification);
-    
-    // Анимация появления
-    setTimeout(() => {
-      notification.style.opacity = '1';
-    }, 10);
-    
-    // Удаляем через несколько секунд
-    setTimeout(() => {
-      notification.style.opacity = '0';
-      setTimeout(() => notification.remove(), 300);
-    }, 5000);
-  }
-  
   // Проверяем, должен ли пост быть исключен на основе списка исключенных терминов
   function isPostExcluded(postText) {
     // Используем сохраненные исключенные термины вместо извлечения их из DOM
@@ -466,9 +361,6 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Обновляем статистику
   function updateStatistics() {
-    // Обновляем общее количество постов
-    totalPosts.textContent = stats.totalPosts;
-    
     // Текущее время
     const now = Date.now();
     
@@ -524,6 +416,51 @@ document.addEventListener('DOMContentLoaded', () => {
       animateTrendChange(periodKey, currentValue > previousValue ? 'up' : 
                                     currentValue < previousValue ? 'down' : 'neutral');
     }
+  }
+  
+  // Функция для обновления индикатора тренда
+  function updateTrendIndicator(trendElement, currentValue, previousValue) {
+    if (!trendElement) return;
+    
+    // Получаем элемент для отображения текстового значения тренда
+    const valueElement = document.getElementById(trendElement.id.replace('trend', 'trendValue'));
+    
+    // Очищаем текущее содержимое
+    trendElement.innerHTML = '';
+    
+    // Определяем разницу
+    const diff = currentValue - previousValue;
+    
+    // Вычисляем процентное изменение (избегаем деления на ноль)
+    let percentChange = 0;
+    if (previousValue > 0) {
+      percentChange = Math.round((diff / previousValue) * 100);
+    } else if (diff > 0) {
+      percentChange = 100; // Если предыдущее значение было 0, а текущее > 0, считаем как 100% рост
+    }
+    
+    // Создаем символ тренда
+    const trendSpan = document.createElement('span');
+    
+    if (diff > 0) {
+      // Положительный тренд (рост)
+      trendSpan.innerHTML = '↑';
+      trendSpan.style.color = 'var(--success)';
+      if (valueElement) valueElement.textContent = `+${percentChange}%`;
+    } else if (diff < 0) {
+      // Отрицательный тренд (падение)
+      trendSpan.innerHTML = '↓';
+      trendSpan.style.color = 'var(--danger)';
+      if (valueElement) valueElement.textContent = `${percentChange}%`;
+    } else {
+      // Нейтральный тренд (без изменений)
+      trendSpan.innerHTML = '•';
+      trendSpan.style.color = 'var(--text-secondary)';
+      if (valueElement) valueElement.textContent = '0%';
+    }
+    
+    // Добавляем индикатор в DOM
+    trendElement.appendChild(trendSpan);
   }
   
   // Добавляем анимацию изменения тренда

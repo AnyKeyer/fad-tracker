@@ -5,15 +5,88 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Twitter Monitoring</title>
   <style>
-    /* Main styles for monitoring page */
+    :root {
+      /* Premium Dark Theme with Orange Accents */
+      --bg-primary: #121212;
+      --bg-secondary: #1a1a1a;
+      --bg-tertiary: #252525;
+      --text-primary: #f0f0f0;
+      --text-secondary: #b0b0b0;
+      --accent: #ff7700;
+      --accent-hover: #ff9036;
+      --accent-gradient: linear-gradient(135deg, #ff7700, #ff9036);
+      --accent-transparent: rgba(255, 119, 0, 0.1);
+      --accent-transparent-2: rgba(255, 119, 0, 0.2);
+      --danger: #f4212e;
+      --danger-hover: #e01e2a;
+      --success: #00ba7c;
+      --success-hover: #00a36d;
+      --neutral: #794bc4;
+      --border: #333333;
+      --card-bg: #1e1e1e;
+      --card-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+      --glow: 0 0 15px rgba(255, 119, 0, 0.4);
+      --header-height: auto;
+    }
+    
+    /* Animation Keyframes */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(255, 119, 0, 0.6); }
+      70% { box-shadow: 0 0 0 10px rgba(255, 119, 0, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 119, 0, 0); }
+    }
+    
+    @keyframes shimmer {
+      0% { background-position: -100% 0; }
+      100% { background-position: 200% 0; }
+    }
+    
+    @keyframes float {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-8px); }
+      100% { transform: translateY(0px); }
+    }
+    
+    @keyframes slideIn {
+      from { transform: translateX(20px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    
+    @keyframes glow {
+      0% { box-shadow: 0 0 5px rgba(255, 119, 0, 0.5); }
+      50% { box-shadow: 0 0 20px rgba(255, 119, 0, 0.8); }
+      100% { box-shadow: 0 0 5px rgba(255, 119, 0, 0.5); }
+    }
+    
+    @keyframes pulse-up {
+      0% { box-shadow: 0 0 0 0 rgba(0, 186, 124, 0.5); }
+      70% { box-shadow: 0 0 0 10px rgba(0, 186, 124, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(0, 186, 124, 0); }
+    }
+    
+    @keyframes pulse-down {
+      0% { box-shadow: 0 0 0 0 rgba(244, 33, 46, 0.5); }
+      70% { box-shadow: 0 0 0 10px rgba(244, 33, 46, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(244, 33, 46, 0); }
+    }
+
+    /* Main styles */
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #15202b;
-      color: #ffffff;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
       margin: 0;
       padding: 0;
       height: 100vh;
       overflow: hidden;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(255, 119, 0, 0.03) 0%, transparent 20%),
+        radial-gradient(circle at 90% 80%, rgba(255, 119, 0, 0.03) 0%, transparent 20%);
     }
 
     .container {
@@ -35,32 +108,140 @@
     .tweets-container {
       flex: 1;
       overflow-y: auto;
-      border-right: 1px solid #38444d;
+      border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       height: 100%;
+      position: relative;
+    }
+    
+    .tweets-container::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    .tweets-container::-webkit-scrollbar-track {
+      background: var(--bg-secondary);
+    }
+    
+    .tweets-container::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+    
+    .tweets-container::-webkit-scrollbar-thumb:hover {
+      background: var(--accent);
     }
 
     .header {
       position: sticky;
       top: 0;
       z-index: 10;
-      background-color: #15202b;
-      padding: 15px;
-      border-bottom: 1px solid #38444d;
+      background-color: var(--bg-primary);
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
     }
 
+    /* Header alignment styles */
+    .title-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 15px;
+    }
+    
     .title {
       margin: 0;
       font-size: 1.5rem;
-      margin-bottom: 10px;
-      color: #ffffff;
+      color: var(--text-primary);
+      position: relative;
+    }
+    
+    .header-buttons {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .title:after {
+      content: '';
+      position: absolute;
+      bottom: -5px;
+      left: 0;
+      width: 40px;
+      height: 3px;
+      background: var(--accent-gradient);
+      border-radius: 3px;
+    }
+
+    /* Header buttons styling */
+    #stopAnalysisBtn, #showAnalysisTopBtn {
+      background: var(--accent-gradient);
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    #stopAnalysisBtn {
+      background: linear-gradient(135deg, var(--danger), var(--danger-hover));
+    }
+    
+    #stopAnalysisBtn:before, #showAnalysisTopBtn:before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: 0.5s;
+    }
+    
+    #stopAnalysisBtn:hover, #showAnalysisTopBtn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3), var(--glow);
+    }
+    
+    #stopAnalysisBtn:hover {
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3), 0 0 15px rgba(244, 33, 46, 0.4);
+    }
+    
+    #stopAnalysisBtn:hover:before, #showAnalysisTopBtn:hover:before {
+      left: 100%;
     }
 
     .search-info {
-      background-color: #192734;
-      padding: 10px;
-      border-radius: 5px;
+      background-color: var(--bg-secondary);
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .search-info:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+    }
+    
+    .search-info:before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 3px;
+      height: 100%;
+      background: var(--accent-gradient);
     }
 
     .search-keywords {
@@ -70,26 +251,53 @@
     }
 
     .keyword-tag {
-      background-color: #1da1f2;
-      color: white;
-      padding: 5px 10px;
+      background-color: var(--accent-transparent);
+      color: var(--text-primary);
+      padding: 6px 12px;
       border-radius: 15px;
       font-size: 0.9rem;
+      font-weight: 500;
+      border: 1px solid rgba(255, 119, 0, 0.3);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s ease;
+      animation: fadeIn 0.5s ease;
+    }
+    
+    .keyword-tag:hover {
+      background-color: var(--accent-transparent-2);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     }
 
     #excludedTermsContainer {
-      margin-top: 10px;
-      background-color: #192734;
-      padding: 10px;
-      border-radius: 5px;
+      margin-top: 15px;
+      background-color: var(--bg-secondary);
+      padding: 15px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      position: relative;
+      overflow: hidden;
       display: none;
+      animation: fadeIn 0.5s ease;
+    }
+    
+    #excludedTermsContainer:before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 3px;
+      height: 100%;
+      background: linear-gradient(to bottom, var(--danger), var(--danger-hover));
     }
 
     .excluded-terms-label {
       display: block;
-      margin-bottom: 5px;
-      font-weight: bold;
-      color: #f8f9fa;
+      margin-bottom: 10px;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-size: 0.95rem;
     }
 
     #excludedTermsList {
@@ -99,7 +307,12 @@
     }
 
     #excludedTermsList .keyword-tag {
-      background-color: #e0245e;
+      background-color: rgba(244, 33, 46, 0.1);
+      border: 1px solid rgba(244, 33, 46, 0.3);
+    }
+    
+    #excludedTermsList .keyword-tag:hover {
+      background-color: rgba(244, 33, 46, 0.2);
     }
 
     /* Enhanced Stats section styling */
@@ -107,27 +320,29 @@
       margin-top: 15px;
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
+      gap: 15px;
       margin-bottom: 15px;
     }
 
     .stat-card {
-      background-color: #192734;
+      background-color: var(--card-bg);
       border-radius: 12px;
-      padding: 12px 10px;
+      padding: 15px;
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
       position: relative;
-      transition: transform 0.2s, box-shadow 0.2s;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
       overflow: hidden;
       display: flex;
       flex-direction: column;
       align-items: center;
       text-align: center;
+      border: 1px solid var(--border);
+      animation: fadeIn 0.5s ease;
     }
 
     .stat-card:hover {
       transform: translateY(-3px);
-      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4), var(--glow);
     }
 
     .stat-card:before {
@@ -136,25 +351,29 @@
       top: 0;
       left: 0;
       width: 100%;
-      height: 4px;
-      background: linear-gradient(to right, #1da1f2, #17bf63);
+      height: 3px;
+      background: var(--accent-gradient);
     }
 
     .stat-label {
       display: block;
-      color: #8899a6;
-      font-size: 0.8rem;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
       margin-bottom: 4px;
       font-weight: 500;
     }
 
     .stat-value {
-      font-size: 1.6rem;
+      font-size: 1.8rem;
       font-weight: bold;
-      color: #ffffff;
+      color: var(--text-primary);
       text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
       margin-bottom: 2px;
       line-height: 1.2;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
 
     .trend-indicator {
@@ -166,28 +385,17 @@
 
     .trend-value {
       font-size: 0.8rem;
-      color: #8899a6;
+      color: var(--text-secondary);
       margin-left: 3px;
     }
 
     canvas {
       display: block;
-      margin-top: 8px;
+      margin-top: 12px;
       width: 100%;
       height: 60px;
-    }
-
-    /* Animation for trend changes */
-    @keyframes pulse-up {
-      0% { box-shadow: 0 0 0 0 rgba(23, 191, 99, 0.5); }
-      70% { box-shadow: 0 0 0 10px rgba(23, 191, 99, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(23, 191, 99, 0); }
-    }
-
-    @keyframes pulse-down {
-      0% { box-shadow: 0 0 0 0 rgba(224, 36, 94, 0.5); }
-      70% { box-shadow: 0 0 0 10px rgba(224, 36, 94, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(224, 36, 94, 0); }
+      border-radius: 4px;
+      background-color: var(--bg-tertiary);
     }
 
     .pulse-up {
@@ -198,88 +406,104 @@
       animation: pulse-down 2s 1;
     }
 
-    #stopAnalysisBtn {
-      background-color: #e0245e;
-      color: white;
-      border: none;
-      padding: 10px 15px;
-      border-radius: 5px;
-      cursor: pointer;
-      font-weight: bold;
-      margin-top: 15px;
-      transition: background-color 0.2s;
-    }
-
-    #stopAnalysisBtn:hover {
-      background-color: #c0142e;
-    }
-
     /* Show Analysis Button at top */
     #showAnalysisTopBtn {
       margin-left: 10px;
-      background-color: #1da1f2;
+      background: var(--accent-gradient);
       color: white;
       border: none;
-      padding: 5px 10px;
-      border-radius: 5px;
+      padding: 6px 12px;
+      border-radius: 20px;
       cursor: pointer;
       font-weight: bold;
       font-size: 0.8rem;
       vertical-align: middle;
       display: none; /* Hidden by default */
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     }
 
     #showAnalysisTopBtn:hover {
-      background-color: #1a91da;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3), var(--glow);
     }
 
     /* Tweets list */
     .tweets {
       overflow-y: auto;
-      padding: 15px;
+      padding: 20px;
       flex-grow: 1;
     }
 
     .tweet-item {
-      background-color: #192734;
-      border-radius: 8px;
-      margin-bottom: 15px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-      transition: transform 0.2s;
+      background-color: var(--card-bg);
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      transition: all 0.3s ease;
       overflow: hidden;
+      border: 1px solid var(--border);
+      position: relative;
+      animation: fadeIn 0.5s ease;
+    }
+    
+    .tweet-item:before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--accent-gradient);
+      opacity: 0;
+      transition: opacity 0.3s ease;
     }
 
     .tweet-item:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+      transform: translateY(-4px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25), var(--glow);
+    }
+    
+    .tweet-item:hover:before {
+      opacity: 1;
     }
 
     .excluded-tweet {
       opacity: 0.7;
+    }
+    
+    .excluded-tweet:before {
+      background: linear-gradient(to bottom, var(--danger), var(--danger-hover));
     }
 
     .card-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 10px 15px;
+      padding: 15px 20px;
+      border-bottom: 1px solid var(--border);
+      background-color: rgba(0, 0, 0, 0.1);
     }
 
     .card-body {
-      padding: 15px;
+      padding: 20px;
     }
 
     .tweet-text {
       margin: 0;
-      line-height: 1.5;
+      line-height: 1.6;
       font-size: 1rem;
       white-space: pre-wrap;
+      color: var(--text-primary);
     }
 
     .loading-info {
       font-style: italic;
-      color: #8899a6;
+      color: var(--text-secondary);
       font-size: 0.9rem;
+      text-align: center;
+      margin: 40px 0;
+      animation: fadeIn 1s ease infinite alternate;
     }
 
     /* Notificatons */
@@ -287,54 +511,22 @@
       position: fixed;
       top: 20px;
       right: 20px;
-      background-color: rgba(29, 161, 242, 0.9);
+      background: var(--accent-gradient);
       color: white;
-      padding: 15px;
-      border-radius: 8px;
+      padding: 15px 20px;
+      border-radius: 12px;
       max-width: 350px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), var(--glow);
       z-index: 1000;
       opacity: 0;
-      transition: opacity 0.3s;
+      transition: opacity 0.3s, transform 0.3s;
+      transform: translateX(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
-
-    @media (prefers-color-scheme: light) {
-      body {
-        background-color: #ffffff;
-        color: #000000;
-      }
-      
-      .header {
-        background-color: #ffffff;
-      }
-      
-      .title {
-        color: #000000;
-      }
-      
-      .search-info {
-        background-color: #f5f8fa;
-      }
-      
-      #excludedTermsContainer {
-        background-color: #f5f8fa;
-      }
-      
-      .excluded-terms-label {
-        color: #14171a;
-      }
-      
-      .tweet-item {
-        background-color: #f5f8fa;
-      }
-      
-      .tweet-text {
-        color: #14171a;
-      }
-      
-      .loading-info {
-        color: #657786;
-      }
+    
+    .tweet-notification.show {
+      opacity: 1;
+      transform: translateX(0);
     }
 
     /* AI Analysis Section Styles */
@@ -342,255 +534,335 @@
       display: flex;
       flex-direction: column;
       height: 100vh;
-      border-left: 1px solid #38444d;
-      background-color: #192734;
+      border-left: 1px solid var(--border);
+      background-color: var(--bg-secondary);
       width: 480px;
       overflow-y: auto;
+      position: relative;
+    }
+    
+    .ai-analysis-section::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    .ai-analysis-section::-webkit-scrollbar-track {
+      background: var(--bg-secondary);
+    }
+    
+    .ai-analysis-section::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+    
+    .ai-analysis-section::-webkit-scrollbar-thumb:hover {
+      background: var(--accent);
     }
     
     .ai-header {
-      padding: 15px;
-      border-bottom: 1px solid #38444d;
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
       position: sticky;
       top: 0;
-      background-color: #192734;
+      background-color: var(--bg-secondary);
       z-index: 5;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
     }
     
     .ai-title {
       margin: 0;
       font-size: 1.3rem;
-      color: #ffffff;
+      color: var(--text-primary);
+      position: relative;
+    }
+    
+    .ai-title:after {
+      content: '';
+      position: absolute;
+      bottom: -5px;
+      left: 0;
+      width: 40px;
+      height: 3px;
+      background: var(--accent-gradient);
+      border-radius: 3px;
     }
     
     .ai-status {
       font-size: 0.8rem;
-      color: #8899a6;
+      color: var(--text-secondary);
+      background-color: var(--bg-tertiary);
+      padding: 5px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
     }
     
     .ai-content {
-      padding: 15px;
+      padding: 20px;
       overflow-y: auto;
       flex-grow: 1;
     }
     
     .ai-card {
-      background-color: #22303c;
-      border-radius: 8px;
-      margin-bottom: 15px;
-      padding: 15px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      background-color: var(--card-bg);
+      border-radius: 12px;
+      margin-bottom: 20px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border);
+      position: relative;
+      transition: all 0.3s ease;
+      animation: fadeIn 0.5s ease;
+      overflow: hidden;
+    }
+    
+    .ai-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3), var(--glow);
+    }
+    
+    .ai-card:before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: var(--accent-gradient);
     }
     
     .ai-card h4 {
       margin-top: 0;
-      margin-bottom: 15px;
-      color: #1da1f2;
+      margin-bottom: 20px;
+      color: var(--accent);
       font-size: 1.1rem;
+      position: relative;
+      display: inline-block;
     }
     
     .sentiment-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 15px;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
     }
     
     .sentiment-indicator {
       font-weight: bold;
-      padding: 3px 8px;
-      border-radius: 4px;
+      padding: 5px 12px;
+      border-radius: 20px;
       font-size: 0.9rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      transition: all 0.3s ease;
+    }
+    
+    .sentiment-indicator:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
     
     .sentiment-indicator.positive {
-      background-color: #17bf63;
+      background: linear-gradient(135deg, var(--success), var(--success-hover));
       color: white;
     }
     
     .sentiment-indicator.neutral {
-      background-color: #794bc4;
+      background: linear-gradient(135deg, var(--neutral), #6b35c8);
       color: white;
     }
     
     .sentiment-indicator.negative {
-      background-color: #e0245e;
+      background: linear-gradient(135deg, var(--danger), var(--danger-hover));
       color: white;
     }
     
     .sentiment-details {
-      margin-top: 15px;
+      margin-top: 20px;
     }
     
     .sentiment-bar-container {
-      margin-bottom: 10px;
+      margin-bottom: 15px;
     }
     
     .sentiment-label {
       display: inline-block;
       width: 70px;
       font-size: 0.9rem;
+      color: var(--text-primary);
+      font-weight: 500;
     }
     
     .sentiment-bar-wrapper {
       display: inline-flex;
       width: calc(100% - 80px);
-      height: 12px;
-      background-color: #38444d;
-      border-radius: 6px;
+      height: 14px;
+      background-color: var(--bg-tertiary);
+      border-radius: 7px;
       overflow: hidden;
       position: relative;
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
     }
     
     .sentiment-bar {
       height: 100%;
-      border-radius: 6px;
-      transition: width 0.5s ease;
+      border-radius: 7px;
+      transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+      background-size: 200% 100%;
+      background-position: 0 0;
+      animation: shimmer 3s infinite linear;
     }
     
     .sentiment-bar.positive {
-      background-color: #17bf63;
+      background-image: linear-gradient(90deg, var(--success) 0%, var(--success-hover) 50%, var(--success) 100%);
     }
     
     .sentiment-bar.neutral {
-      background-color: #794bc4;
+      background-image: linear-gradient(90deg, var(--neutral) 0%, #6b35c8 50%, var(--neutral) 100%);
     }
     
     .sentiment-bar.negative {
-      background-color: #e0245e;
+      background-image: linear-gradient(90deg, var(--danger) 0%, var(--danger-hover) 50%, var(--danger) 100%);
     }
     
     .sentiment-percentage {
       position: absolute;
-      right: 5px;
-      top: -3px;
+      right: 8px;
+      top: -1px;
       font-size: 0.8rem;
       color: white;
-      text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+      text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+      font-weight: 600;
     }
     
     .ai-insights {
-      color: #ffffff;
-      line-height: 1.5;
+      color: var(--text-primary);
+      line-height: 1.6;
     }
     
     .ai-insight-placeholder {
-      color: #8899a6;
+      color: var(--text-secondary);
       font-style: italic;
       text-align: center;
-      padding: 20px 0;
+      padding: 30px 0;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      background-color: var(--bg-tertiary);
     }
     
     .key-phrases-container {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 10px;
     }
     
     .key-phrase {
-      background-color: #1da1f2;
-      color: white;
-      padding: 5px 10px;
-      border-radius: 15px;
+      background-color: var(--accent-transparent);
+      color: var(--text-primary);
+      padding: 6px 14px;
+      border-radius: 20px;
       font-size: 0.9rem;
+      border: 1px solid rgba(255, 119, 0, 0.3);
+      transition: all 0.3s ease;
+      animation: fadeIn 0.5s ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .key-phrase:hover {
+      background-color: var(--accent-transparent-2);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     }
     
     .ai-actions {
-      padding: 15px;
-      border-top: 1px solid #38444d;
+      padding: 20px;
+      border-top: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
+      background-color: var(--bg-secondary);
     }
     
     .refresh-analysis-btn, .toggle-ai-btn {
-      padding: 8px 15px;
-      border-radius: 5px;
+      padding: 10px 18px;
+      border-radius: 20px;
       border: none;
       font-weight: bold;
       cursor: pointer;
-      transition: background-color 0.2s;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .refresh-analysis-btn:before, .toggle-ai-btn:before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: 0.5s;
+    }
+    
+    .refresh-analysis-btn:hover:before, .toggle-ai-btn:hover:before {
+      left: 100%;
     }
     
     .refresh-analysis-btn {
-      background-color: #1da1f2;
+      background: var(--accent-gradient);
       color: white;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
     }
     
     .refresh-analysis-btn:hover {
-      background-color: #1a91da;
+      transform: translateY(-3px);
+      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3), var(--glow);
     }
     
     .toggle-ai-btn {
-      background-color: #38444d;
-      color: white;
+      background-color: var(--bg-tertiary);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
     }
     
     .toggle-ai-btn:hover {
-      background-color: #2d3741;
+      background-color: var(--bg-tertiary);
+      transform: translateY(-3px);
+      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
     }
     
     .refresh-analysis-btn:disabled {
-      background-color: #38444d;
+      background: linear-gradient(135deg, #555555, #333333);
       cursor: not-allowed;
+      box-shadow: none;
     }
     
-    /* Light theme overrides for AI section */
-    @media (prefers-color-scheme: light) {
-      .ai-analysis-section {
-        background-color: #f5f8fa;
-        border-left: 1px solid #e1e8ed;
-      }
-      
-      .ai-header {
-        background-color: #f5f8fa;
-        border-bottom: 1px solid #e1e8ed;
-      }
-      
-      .ai-title {
-        color: #14171a;
-      }
-      
-      .ai-status {
-        color: #657786;
-      }
-      
-      .ai-card {
-        background-color: #ffffff;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      }
-      
-      .ai-card h4 {
-        color: #1da1f2;
-      }
-      
-      .sentiment-bar-wrapper {
-        background-color: #e1e8ed;
-      }
-      
-      .ai-insights {
-        color: #14171a;
-      }
-      
-      .ai-insight-placeholder {
-        color: #657786;
-      }
-      
-      .ai-actions {
-        border-top: 1px solid #e1e8ed;
-      }
-      
-      .toggle-ai-btn {
-        background-color: #e1e8ed;
-        color: #14171a;
-      }
-      
-      .toggle-ai-btn:hover {
-        background-color: #d1d8dd;
-      }
+    .refresh-analysis-btn:disabled:hover {
+      transform: none;
     }
+    
+    /* Entry animations */
+    .tweets-container {
+      animation: fadeIn 0.8s ease-out;
+    }
+    
+    .ai-analysis-section {
+      animation: slideIn 0.8s ease-out;
+    }
+    
+    .header, .ai-header {
+      animation: fadeIn 0.6s ease-out;
+    }
+    
+    .stat-card:nth-child(1) { animation-delay: 0.1s; }
+    .stat-card:nth-child(2) { animation-delay: 0.2s; }
+    .stat-card:nth-child(3) { animation-delay: 0.3s; }
+    .stat-card:nth-child(4) { animation-delay: 0.4s; }
+    .stat-card:nth-child(5) { animation-delay: 0.5s; }
+    .stat-card:nth-child(6) { animation-delay: 0.6s; }
   </style>
 </head>
 <body>
@@ -598,8 +870,13 @@
     <div class="tweets-section">
       <div class="tweets-container">
         <div class="header">
-          <h1 class="title">Twitter Monitoring <button id="stopAnalysisBtn" class="btn btn-danger" style="display: inline-block; margin-left: 15px; vertical-align: middle; font-size: 0.8rem; padding: 5px 10px;">Stop Analysis</button>
-          <button id="showAnalysisTopBtn">Show Analysis</button></h1>
+          <div class="title-container">
+            <h1 class="title">Twitter Monitoring</h1>
+            <div class="header-buttons">
+              <button id="stopAnalysisBtn">Stop Analysis</button>
+              <button id="showAnalysisTopBtn">Show Analysis</button>
+            </div>
+          </div>
           
           <div class="search-info">
             <div class="search-keywords" id="keywordsList"></div>
@@ -611,10 +888,6 @@
           </div>
           
           <div class="stats">
-            <div class="stat-card">
-              <span class="stat-label">Total:</span>
-              <span class="stat-value" id="totalPosts">0</span>
-            </div>
             <div class="stat-card">
               <span class="stat-label">1 min:</span>
               <span class="stat-value" id="posts1min">0</span>
