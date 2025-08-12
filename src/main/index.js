@@ -7,6 +7,29 @@ const log = logger.main; // Use main logger for general app logs
 const aiLog = logger.ai; // Use AI logger for Gemini API related logs
 const axios = require('axios'); // Import axios for Gemini API
 
+// In-memory analysis cache per coin/keyword to avoid re-analyzing the same tweets
+const analysisState = {
+  // coinKey: {
+  //   seenHashes: Set<string>,
+  //   lastResult: object|null,
+  //   lastUpdated: number,
+  //   totalTweets: number
+  // }
+};
+
+function hashTweet(text = '', author = '') {
+  try {
+    const s = (author + '|' + text).toLowerCase();
+    let h = 0;
+    for (let i = 0; i < s.length; i++) {
+      h = (h * 31 + s.charCodeAt(i)) | 0;
+    }
+    return String(h);
+  } catch (e) {
+    return String(Date.now());
+  }
+}
+
 // Initialize store for saving settings
 const store = new Store();
 
@@ -1243,12 +1266,38 @@ async function analyzeTextWithGemini(apiKey, tweets, coinName) {
       };
     }
     
-    aiLog.info(`Starting analysis with Gemini API for ${tweets.length} tweets about ${coinName || 'unknown coin'}`);
-    
-    // Формируем текст для анализа из твитов
-    const tweetTexts = tweets.map(tweet => tweet.text || '').filter(text => text.trim() !== '');
-    
-    if (tweetTexts.length === 0) {
+    const coinKey = (coinName || 'coin').toLowerCase();
+    const state = (analysisState[coinKey] = analysisState[coinKey] || {
+      seenHashes: new Set(),
+      lastResult: null,
+      lastUpdated: 0,
+      totalTweets: 0
+    });
+
+    aiLog.info(`Starting analysis with Gemini API: coin=${coinKey}, inputTweets=${tweets.length}`);
+
+    // Нормализуем входные твиты
+    const normalized = (tweets || [])
+      .map(t => ({ text: (t.text || '').trim(), author: (t.author || '').trim() }))
+      .filter(t => t.text);
+
+    // Исключаем уже увиденные по хешу
+    const newTweets = [];
+    for (const t of normalized) {
+      const h = hashTweet(t.text, t.author);
+      if (!state.seenHashes.has(h)) {
+        state.seenHashes.add(h);
+        newTweets.push(t);
+      }
+    }
+    state.totalTweets += newTweets.length;
+
+    // Если нет новых твитов — вернуть предыдущий результат, если он есть
+    if (newTweets.length === 0) {
+      aiLog.info(`No new tweets to analyze for ${coinKey}. Returning last result if available.`);
+      if (state.lastResult) {
+        return { success: true, data: state.lastResult };
+      }
       aiLog.error('No tweet texts to analyze');
       return {
         success: false,
@@ -1256,11 +1305,18 @@ async function analyzeTextWithGemini(apiKey, tweets, coinName) {
       };
     }
     
-    // Объединяем твиты в один текст для анализа
+    // Ограничиваем размер батча, чтобы не перегружать API
+    const BATCH_LIMIT = 30;
+    const batch = newTweets.slice(0, BATCH_LIMIT);
+    const tweetTexts = batch.map(t => t.text);
     const tweetsContent = tweetTexts.join('\n\n');
-    aiLog.info(`Prepared ${tweetTexts.length} tweets for analysis, total length: ${tweetsContent.length} chars`);
+    aiLog.info(`Prepared batch size: ${tweetTexts.length}, total text length: ${tweetsContent.length}`);
     
     // Определяем промпт для Gemini (ключи и значения-энумы на английском, тексты — на русском)
+    const previousContext = state.lastResult
+      ? `\nPrevious summary (RU): ${state.lastResult.insights || ''}\nPreviously detected key phrases: ${(state.lastResult.keyPhrases || []).join(', ')}`
+      : '';
+
     const prompt = `
     You are a financial sentiment analysis expert. Analyze the following tweets about the cryptocurrency ${coinName || 'coin'}.
 
@@ -1268,6 +1324,7 @@ async function analyzeTextWithGemini(apiKey, tweets, coinName) {
     - Keep JSON field names and sentiment enum values in English exactly as specified.
     - Provide narrative text fields (insights and keyPhrases content) in Russian.
     - Percentages must be integers that sum to 100.
+    - If prior context is provided, incorporate it to keep analysis incremental and consistent.
 
     Return a JSON with this schema:
     {
@@ -1281,8 +1338,11 @@ async function analyzeTextWithGemini(apiKey, tweets, coinName) {
       "keyPhrases": ["ключевая фраза 1", "ключевая фраза 2", "ключевая фраза 3"]
     }
 
-    Analyze these tweets:
+    Analyze these tweets (new batch):
     ${tweetsContent}
+
+    Context to consider:
+    ${previousContext}
     `;
     
     aiLog.info(`Sending request to Gemini API - prompt length: ${prompt.length}`);
@@ -1290,27 +1350,50 @@ async function analyzeTextWithGemini(apiKey, tweets, coinName) {
     // Вызываем Gemini API
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
     aiLog.info(`Using Gemini API URL: ${apiUrl.replace(apiKey, "API_KEY_HIDDEN")}`);
-    
-    const response = await axios.post(
-      apiUrl,
-      {
-        contents: [
+
+    // Повторные попытки при 503/500/429/сетевых ошибках
+    const maxRetries = 3;
+    let attempt = 0;
+    let response = null;
+    let lastError = null;
+    while (attempt < maxRetries) {
+      try {
+        response = await axios.post(
+          apiUrl,
           {
-            parts: [
+            contents: [
               {
-                text: prompt
+                parts: [
+                  {
+                    text: prompt
+                  }
+                ]
               }
-            ]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.2,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 1024
+            ],
+            generationConfig: {
+              temperature: 0.2,
+              topK: 40,
+              topP: 0.95,
+              maxOutputTokens: 1024
+            }
+          },
+          { timeout: 30000 }
+        );
+        break;
+      } catch (e) {
+        lastError = e;
+        const status = e?.response?.status;
+        if (status === 503 || status === 500 || status === 429 || !status) {
+          const backoff = Math.min(2000 * Math.pow(2, attempt), 8000);
+          aiLog.warn(`Gemini request failed (attempt ${attempt + 1}, status=${status || 'network'}). Backing off ${backoff}ms...`);
+          await new Promise(res => setTimeout(res, backoff));
+          attempt += 1;
+          continue;
         }
+        throw e;
       }
-    );
+    }
+    if (!response) throw lastError || new Error('Gemini request failed after retries');
     
     aiLog.info(`Got response from Gemini API - status: ${response.status}`);
     
@@ -1334,8 +1417,10 @@ async function analyzeTextWithGemini(apiKey, tweets, coinName) {
         try {
           const analysisResult = JSON.parse(jsonMatch[0]);
           
-          // Возвращаем результат анализа
+          // Сохраняем и возвращаем результат анализа
           aiLog.info(`Successfully parsed Gemini response as JSON: ${JSON.stringify(analysisResult)}`);
+          state.lastResult = analysisResult;
+          state.lastUpdated = Date.now();
           return {
             success: true,
             data: analysisResult
@@ -1360,6 +1445,9 @@ async function analyzeTextWithGemini(apiKey, tweets, coinName) {
       }
     } else {
       aiLog.error('Invalid response structure from Gemini:', JSON.stringify(response.data || {}));
+      if (state.lastResult) {
+        return { success: true, data: state.lastResult };
+      }
       return {
         success: false,
         error: 'Invalid response from Gemini API'
@@ -1369,6 +1457,11 @@ async function analyzeTextWithGemini(apiKey, tweets, coinName) {
     aiLog.error('Error calling Gemini API:', error);
     if (error.response) {
       aiLog.error(`Gemini API error details: status=${error.response.status}, data=${JSON.stringify(error.response.data || {})}`);
+    }
+    const coinKey = (coinName || 'coin').toLowerCase();
+    const state = analysisState[coinKey];
+    if (state?.lastResult) {
+      return { success: true, data: state.lastResult };
     }
     return {
       success: false,

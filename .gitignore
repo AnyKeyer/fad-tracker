@@ -1,1 +1,29 @@
-node_modules
+# Dependencies
+node_modules/
+
+# Build outputs
+/dist/
+/out/
+/build/
+
+# Logs
+*.log
+logs/
+ai.log
+ai.old.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS/Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Electron-builder cache
+**/win-unpacked/
+**/*.blockmap
+**/latest.yml
+**/builder-*.yml
+**/builder-*.yamlnode_modules

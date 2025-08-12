@@ -1,15 +1,15 @@
 {
   "name": "twitter-token-analysis",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Twitter token analysis application for cryptocurrency trends",
   "main": "src/main/index.js",
   "scripts": {
     "start": "electron .",
     "dev": "cross-env NODE_ENV=development electron .",
-  "build": "electron-builder",
-  "pack": "electron-builder --dir",
-  "release": "electron-builder --publish always",
-  "release:win": "electron-builder --win --x64 --publish always"
+    "build": "electron-builder",
+    "pack": "electron-builder --dir",
+    "release": "electron-builder --publish always",
+    "release:win": "electron-builder --win --x64 --publish always"
   },
   "keywords": [
     "twitter",
@@ -66,8 +66,8 @@
       }
     ],
     "win": {
-  "target": "nsis",
-  "signAndEditExecutable": false
+      "target": "nsis",
+      "signAndEditExecutable": false
     },
     "mac": {
       "target": "dmg"
