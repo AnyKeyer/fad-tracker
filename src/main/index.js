@@ -20,18 +20,23 @@ let page = null;
 let injectObserverFn = null;
 
 // Initialize puppeteer browser
-async function initBrowser() {
+async function initBrowser(options = {}) {
   try {
+  // Run headless in production (packaged) to avoid showing debug browser UI
+  // Allow explicit override via options.headless (e.g., for visible login flow)
+  const isHeadless = typeof options.headless === 'boolean' ? options.headless : app.isPackaged;
     browser = await puppeteer.launch({
-      headless: false,
-      defaultViewport: null,
+      headless: isHeadless,
+      defaultViewport: isHeadless ? { width: 1200, height: 800 } : null,
       args: [
-        '--no-sandbox', 
+        '--no-sandbox',
         '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
         '--window-size=1200,800'
       ]
     });
-    return browser;
+  return browser;
   } catch (error) {
     log.error('Failed to launch browser:', error);
     throw error;
@@ -145,7 +150,8 @@ app.on('activate', () => {
 ipcMain.handle('twitter-login', async (event) => {
   try {
     if (!browser) {
-      browser = await initBrowser();
+  // For login, always open a visible browser to allow manual auth
+  browser = await initBrowser({ headless: false });
     }
     
     page = await browser.newPage();
@@ -316,7 +322,8 @@ ipcMain.handle('start-analysis', async (event, { keywords, excludedTerms }) => {
     
     // Launch a separate Puppeteer browser window for Twitter
     if (!browser) {
-      browser = await initBrowser();
+      // In packaged builds, use headless for monitoring. In dev, keep visible.
+      browser = await initBrowser({ headless: app.isPackaged });
     }
     
     // Open Twitter and perform search
@@ -1253,29 +1260,28 @@ async function analyzeTextWithGemini(apiKey, tweets, coinName) {
     const tweetsContent = tweetTexts.join('\n\n');
     aiLog.info(`Prepared ${tweetTexts.length} tweets for analysis, total length: ${tweetsContent.length} chars`);
     
-    // Определяем промпт для Gemini
+    // Определяем промпт для Gemini (ключи и значения-энумы на английском, тексты — на русском)
     const prompt = `
     You are a financial sentiment analysis expert. Analyze the following tweets about the cryptocurrency ${coinName || 'coin'}.
-    
-    Please provide:
-    1. The overall sentiment (positive, neutral, or negative)
-    2. The percentage breakdown of sentiment (positive, neutral, negative) with exact numbers adding up to 100%
-    3. A brief summary of key insights about what people are saying
-    4. A list of key topics or phrases mentioned (max 5)
-    
-    Format your response as a JSON object with the following structure:
+
+    Requirements:
+    - Keep JSON field names and sentiment enum values in English exactly as specified.
+    - Provide narrative text fields (insights and keyPhrases content) in Russian.
+    - Percentages must be integers that sum to 100.
+
+    Return a JSON with this schema:
     {
-      "sentiment": "positive/neutral/negative",
+      "sentiment": "positive" | "neutral" | "negative",
       "sentimentBreakdown": {
         "positive": 33,
         "neutral": 34,
         "negative": 33
       },
-      "insights": "Your insights here...",
-      "keyPhrases": ["phrase1", "phrase2", "phrase3"]
+      "insights": "Краткое резюме на русском...",
+      "keyPhrases": ["ключевая фраза 1", "ключевая фраза 2", "ключевая фраза 3"]
     }
-    
-    Here are the tweets to analyze:
+
+    Analyze these tweets:
     ${tweetsContent}
     `;
     

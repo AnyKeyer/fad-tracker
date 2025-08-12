@@ -6,8 +6,10 @@
   "scripts": {
     "start": "electron .",
     "dev": "cross-env NODE_ENV=development electron .",
-    "build": "electron-builder",
-    "pack": "electron-builder --dir"
+  "build": "electron-builder",
+  "pack": "electron-builder --dir",
+  "release": "electron-builder --publish always",
+  "release:win": "electron-builder --win --x64 --publish always"
   },
   "keywords": [
     "twitter",
@@ -19,6 +21,10 @@
   ],
   "author": "",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AnyKeyer/fad-tracker.git"
+  },
   "dependencies": {
     "@google/generative-ai": "^0.2.0",
     "axios": "^1.6.7",
@@ -52,8 +58,16 @@
       "node_modules/**/*",
       "package.json"
     ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "AnyKeyer",
+        "repo": "fad-tracker"
+      }
+    ],
     "win": {
-      "target": "nsis"
+  "target": "nsis",
+  "signAndEditExecutable": false
     },
     "mac": {
       "target": "dmg"
